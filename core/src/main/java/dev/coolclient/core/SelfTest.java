@@ -1,0 +1,207 @@
+package dev.coolclient.core;
+
+import dev.coolclient.core.cosmetic.CosmeticCatalog;
+import dev.coolclient.core.gui.screen.CosmeticsScreen;
+import dev.coolclient.core.gui.screen.HudEditorScreen;
+import dev.coolclient.core.gui.screen.MainMenuScreen;
+import dev.coolclient.core.gui.screen.ModMenuScreen;
+import dev.coolclient.core.modules.hud.FpsHud;
+import dev.coolclient.core.modules.visual.HandChams;
+import dev.coolclient.core.modules.visual.Skybox;
+import dev.coolclient.core.render.gpu.SkyStyle;
+import dev.coolclient.core.util.Log;
+
+/**
+ * Development smoke test, enabled with {@code -Dcoolclient.selftest=true}. Walks through every major
+ * screen, joins a fresh creative world, and saves a screenshot at each step, then quits. Lets the
+ * client be verified visually without a human at the keyboard.
+ */
+public final class SelfTest {
+    /** Version-specific actions. */
+    public interface Driver {
+        void screenshot(String name);
+
+        /** Creates and joins a new creative superflat world. */
+        void createWorld(String name);
+    }
+
+    private static Driver driver;
+    private static int step;
+    private static int frames;
+
+    private SelfTest() {}
+
+    public static boolean enabled() {
+        return Boolean.getBoolean("coolclient.selftest");
+    }
+
+    public static void install(Driver d) {
+        if (!enabled()) return;
+        driver = d;
+        Log.info("Self-test mode enabled");
+    }
+
+    private static void shot(String name) {
+        Log.info("Self-test screenshot: " + name);
+        driver.screenshot("coolclient-selftest-" + name);
+    }
+
+    private static void next() {
+        step++;
+        frames = 0;
+    }
+
+    /** Called at the start of every frame (the framebuffer still holds the previous frame). */
+    public static void frame() {
+        if (driver == null) return;
+        frames++;
+        CoolClient a = CoolClient.get();
+        try {
+            switch (step) {
+                case 0:
+                    if (a.platform().isLoading()) frames = 0;
+                    if (a.platform().currentScreen() instanceof MainMenuScreen && frames > 120) {
+                        a.cosmetics().equip(CosmeticCatalog.get("cape_aurora"));
+                        a.cosmetics().equip(CosmeticCatalog.get("wings_energy"));
+                        a.cosmetics().equip(CosmeticCatalog.get("halo_aurora"));
+                        a.cosmetics().equip(CosmeticCatalog.get("aura_sparkle"));
+                        HandChams hc = a.modules().get(HandChams.class);
+                        if (hc != null) hc.setEnabled(true);
+                        shot("01-main-menu");
+                        next();
+                        a.platform().openScreen(new ModMenuScreen(null));
+                    }
+                    break;
+                case 1:
+                    if (frames > 60) {
+                        shot("02-mod-menu");
+                        step = 101;
+                        frames = 0;
+                        a.platform().openScreen(ModMenuScreen.themes(null));
+                    }
+                    break;
+                case 101:
+                    if (frames > 60) {
+                        shot("02b-themes");
+                        step = 2;
+                        frames = 0;
+                        a.platform().openScreen(ModMenuScreen.forModule(null, a.modules().get(HandChams.class)));
+                    }
+                    break;
+                case 2:
+                    if (frames > 60) {
+                        shot("03-module-settings");
+                        next();
+                        a.platform().openScreen(new CosmeticsScreen(null));
+                    }
+                    break;
+                case 3:
+                    if (frames > 60) {
+                        shot("04-cosmetics");
+                        next();
+                        a.platform().openScreen(null);
+                        driver.createWorld("coolclient-selftest");
+                    }
+                    break;
+                case 4:
+                    if (a.platform().game().inWorld() && !a.platform().anyScreenOpen()) {
+                        if (frames == 1) {
+                            Skybox sky = a.modules().get(Skybox.class);
+                            sky.style.set(SkyStyle.AURORA.displayName);
+                            sky.setEnabled(true);
+                            FpsHud fps = a.modules().get(FpsHud.class);
+                            if (fps != null) {
+                                fps.setEnabled(true);
+                                fps.style.background.set(true);
+                                fps.style.blur.set(true);
+                            }
+                        }
+                        if (frames > 400) {
+                            shot("05-ingame-hud");
+                            next();
+                            a.platform().game().setPerspective(2);
+                        }
+                    } else {
+                        frames = 0;
+                    }
+                    break;
+                case 5:
+                    if (frames > 80) {
+                        shot("06-cosmetics-front");
+                        next();
+                        a.platform().game().setPerspective(1);
+                    }
+                    break;
+                case 6:
+                    if (frames > 80) {
+                        shot("07-cosmetics-back");
+                        next();
+                        a.platform().game().setPerspective(0);
+                        a.platform().openScreen(new HudEditorScreen(null));
+                    }
+                    break;
+                case 7:
+                    if (frames > 60) {
+                        shot("08-hud-editor");
+                        next();
+                        a.platform().openScreen(new ModMenuScreen(null));
+                    }
+                    break;
+                case 8:
+                    if (frames > 60) {
+                        shot("09-mod-menu-ingame");
+                        next();
+                        a.client().theme.set("Synthwave");
+                        a.modules().get(Skybox.class).style.set(SkyStyle.SYNTHWAVE.displayName);
+                        a.platform().openScreen(ModMenuScreen.themes(null));
+                    }
+                    break;
+                case 9:
+                    if (frames > 60) {
+                        shot("10-themes-ingame-synthwave");
+                        next();
+                        a.platform().openScreen(null);
+                        a.modules().get(Skybox.class).style.set(SkyStyle.NEBULA.displayName);
+                    }
+                    break;
+                case 10:
+                    if (frames > 60) {
+                        shot("11-sky-nebula");
+                        next();
+                        a.modules().get(Skybox.class).style.set(SkyStyle.SUNSET.displayName);
+                    }
+                    break;
+                case 11:
+                    if (frames > 60) {
+                        shot("12-sky-sunset");
+                        next();
+                        a.client().theme.set("Snow");
+                        a.platform().openScreen(new ModMenuScreen(null));
+                    }
+                    break;
+                case 12:
+                    if (frames > 60) {
+                        shot("13-theme-snow");
+                        next();
+                        a.client().theme.set("Aurora");
+                        a.modules().get(Skybox.class).setEnabled(false);
+                        a.platform().openScreen(null);
+                    }
+                    break;
+                case 13:
+                    if (frames > 20) {
+                        Log.info("Self-test complete");
+                        driver = null;
+                        a.platform().quit();
+                    }
+                    break;
+                default:
+                    break;
+            }
+        } catch (Throwable t) {
+            Log.error("Self-test failed at step " + step, t);
+            driver = null;
+            a.platform().quit();
+        }
+    }
+}

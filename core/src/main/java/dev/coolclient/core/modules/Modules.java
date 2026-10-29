@@ -1,0 +1,131 @@
+package dev.coolclient.core.modules;
+
+import dev.coolclient.core.module.ModuleManager;
+import dev.coolclient.core.modules.client.ClientSettings;
+import dev.coolclient.core.modules.cpvp.CrystalPvpTweaks;
+import dev.coolclient.core.modules.cpvp.TotemPopCounter;
+import dev.coolclient.core.modules.hud.ArmorStatusHud;
+import dev.coolclient.core.modules.hud.ClockHud;
+import dev.coolclient.core.modules.hud.ComboCounterHud;
+import dev.coolclient.core.modules.hud.CooldownsHud;
+import dev.coolclient.core.modules.hud.CoordinatesHud;
+import dev.coolclient.core.modules.hud.CpsGraphHud;
+import dev.coolclient.core.modules.hud.CpsHud;
+import dev.coolclient.core.modules.hud.CustomTextHud;
+import dev.coolclient.core.modules.hud.DayCounterHud;
+import dev.coolclient.core.modules.hud.DirectionHud;
+import dev.coolclient.core.modules.hud.DurabilityAlertsHud;
+import dev.coolclient.core.modules.hud.FpsHud;
+import dev.coolclient.core.modules.hud.ItemCounterHud;
+import dev.coolclient.core.modules.hud.KeystrokesHud;
+import dev.coolclient.core.modules.hud.MemoryHud;
+import dev.coolclient.core.modules.hud.PackDisplayHud;
+import dev.coolclient.core.modules.hud.PingHud;
+import dev.coolclient.core.modules.hud.PotionEffectsHud;
+import dev.coolclient.core.modules.hud.ReachDisplayHud;
+import dev.coolclient.core.modules.hud.SaturationHud;
+import dev.coolclient.core.modules.hud.ServerAddressHud;
+import dev.coolclient.core.modules.hud.SessionTimeHud;
+import dev.coolclient.core.modules.hud.SpeedHud;
+import dev.coolclient.core.modules.hud.StopwatchHud;
+import dev.coolclient.core.modules.hud.TotemCounterHud;
+import dev.coolclient.core.modules.legacy.LegacyModules;
+import dev.coolclient.core.modules.perf.PerformanceModules;
+import dev.coolclient.core.modules.utility.AutoGG;
+import dev.coolclient.core.modules.utility.AutoText;
+import dev.coolclient.core.modules.utility.UtilityModules;
+import dev.coolclient.core.modules.visual.BlockOutline;
+import dev.coolclient.core.modules.visual.Crosshair;
+import dev.coolclient.core.modules.visual.Freelook;
+import dev.coolclient.core.modules.visual.HandChams;
+import dev.coolclient.core.modules.visual.Skybox;
+import dev.coolclient.core.modules.visual.ToggleSprint;
+import dev.coolclient.core.modules.visual.ViewModel;
+import dev.coolclient.core.modules.visual.VisualTweaks;
+import dev.coolclient.core.modules.visual.Zoom;
+
+/** The full module list. Version-gated modules are filtered by {@link ModuleManager#register}. */
+public final class Modules {
+    private Modules() {}
+
+    public static void registerAll(ModuleManager m) {
+        m.register(new ClientSettings());
+
+        // HUD
+        m.register(new FpsHud());
+        m.register(new CpsHud());
+        m.register(new KeystrokesHud());
+        m.register(new PingHud());
+        m.register(new CoordinatesHud());
+        m.register(new DirectionHud());
+        m.register(new ArmorStatusHud());
+        m.register(new PotionEffectsHud());
+        m.register(new ClockHud());
+        m.register(new MemoryHud());
+        m.register(new ServerAddressHud());
+        m.register(new ReachDisplayHud());
+        m.register(new ComboCounterHud());
+        m.register(new SpeedHud());
+        m.register(new SaturationHud());
+        m.register(new ItemCounterHud());
+        m.register(new TotemCounterHud());
+        m.register(new CooldownsHud());
+        m.register(new PackDisplayHud());
+        m.register(new SessionTimeHud());
+        m.register(new DayCounterHud());
+        m.register(new StopwatchHud());
+        m.register(new CustomTextHud());
+        m.register(new CpsGraphHud());
+        m.register(new DurabilityAlertsHud());
+
+        // Combat
+        m.register(new VisualTweaks.HitColor());
+        m.register(new VisualTweaks.HurtCam());
+        m.register(new VisualTweaks.Hitboxes());
+        m.register(new VisualTweaks.Particles());
+        m.register(new LegacyModules.OldAnimations());
+        m.register(new LegacyModules.MouseDelayFix());
+        m.register(new TotemPopCounter());
+        m.register(new CrystalPvpTweaks.TotemPopAnimation());
+        m.register(new CrystalPvpTweaks.ShieldTweaks());
+        m.register(new CrystalPvpTweaks.CrystalTweaks());
+
+        // Visual
+        m.register(new HandChams());
+        m.register(new ViewModel());
+        m.register(new BlockOutline());
+        m.register(new Crosshair());
+        m.register(new VisualTweaks.Nametags());
+        m.register(new VisualTweaks.ItemPhysics());
+        m.register(new VisualTweaks.LowFire());
+        m.register(new VisualTweaks.MotionBlur());
+        m.register(new VisualTweaks.Fullbright());
+        m.register(new Skybox());
+        m.register(new VisualTweaks.TimeChanger());
+        m.register(new VisualTweaks.WeatherChanger());
+        m.register(new VisualTweaks.FovChanger());
+        m.register(new VisualTweaks.Bobbing());
+
+        // Mechanic
+        m.register(new Zoom());
+        m.register(new Freelook());
+        m.register(new ToggleSprint());
+
+        // Utility
+        m.register(new AutoGG());
+        m.register(new AutoText());
+        m.register(new UtilityModules.ChatTweaks());
+        m.register(new UtilityModules.ScoreboardTweaks());
+        m.register(new UtilityModules.TabListTweaks());
+        m.register(new UtilityModules.BossBarTweaks());
+        m.register(new UtilityModules.NickHider());
+        m.register(new UtilityModules.Waypoints());
+        m.register(new LegacyModules.Borderless());
+
+        // Performance
+        m.register(new PerformanceModules.EntityCulling());
+        m.register(new PerformanceModules.ParticleLimit());
+        m.register(new PerformanceModules.FpsLimiter());
+        m.register(new LegacyModules.TextureAnimations());
+    }
+}

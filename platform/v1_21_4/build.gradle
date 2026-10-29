@@ -1,0 +1,49 @@
+plugins {
+    id "net.fabricmc.fabric-loom-remap"
+}
+
+base { archivesName = "coolclient-1.21.4" }
+
+loom {
+    runs {
+        client {
+            runDir = "../../run/1.21.4"
+            programArgs "--username", "CoolDev"
+            if (project.hasProperty("selftest")) vmArg "-Dcoolclient.selftest=true"
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${rootProject.modern_minecraft_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${rootProject.loader_version}"
+    // No Fabric API: every hook is a mixin, so the client jar is self-contained.
+    // `-PwithFabricApi` adds it to dev runs only, to check that the two get along.
+    if (project.hasProperty("withFabricApi")) modLocalRuntime "net.fabricmc.fabric-api:fabric-api:0.119.4+1.21.4"
+}
+
+// Runs the release jar on an intermediary-mapped game, exactly like a real install.
+tasks.register("prodClient", net.fabricmc.loom.task.prod.ClientProductionRunTask) {
+    mods.from(tasks.named("remapJar"))
+    runDir = file("../../run/1.21.4-prod")
+    programArgs.addAll("--username", "CoolDev")
+    if (project.hasProperty("selftest")) jvmArgs.add("-Dcoolclient.selftest=true")
+}
+
+sourceSets.main.java.srcDir(rootProject.coreSrc)
+sourceSets.main.resources.srcDir(rootProject.coreRes)
+
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(21) }
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") { expand "version": project.version }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+    options.release = 21
+}

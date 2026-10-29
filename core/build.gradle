@@ -1,0 +1,19 @@
+plugins {
+    id "java-library"
+}
+
+// Core must stay pure Java 8 with zero Minecraft dependencies.
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(21) }
+}
+
+repositories { mavenCentral() }
+
+dependencies {
+    testImplementation "junit:junit:4.13.2"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+    options.release = 8
+}

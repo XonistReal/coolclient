@@ -1,0 +1,58 @@
+plugins {
+    id "net.fabricmc.fabric-loom-remap"
+    id "legacy-looming"
+}
+
+base { archivesName = "coolclient-1.8.9" }
+
+loom {
+    runs {
+        client {
+            runDir = "../../run/1.8.9"
+            programArgs "--username", "CoolDev"
+            if (project.hasProperty("selftest")) vmArg "-Dcoolclient.selftest=true"
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${rootProject.legacy_minecraft_version}"
+    mappings(legacy.yarn(rootProject.legacy_minecraft_version, rootProject.legacy_yarn_build))
+    modImplementation "net.fabricmc:fabric-loader:${rootProject.loader_version}"
+}
+
+repositories {
+    // prodClient asks for net.fabricmc:intermediary; real 1.8.9 installs use net.legacyfabric:intermediary.
+    exclusiveContent {
+        forRepository {
+            ivy {
+                name = "Legacy Fabric intermediary"
+                url = "https://maven.legacyfabric.net/"
+                patternLayout { artifact "net/legacyfabric/intermediary/[revision]/intermediary-[revision]-v2.jar" }
+                metadataSources { artifact() }
+            }
+        }
+        filter { includeModule("net.fabricmc", "intermediary") }
+    }
+}
+
+// Runs the release jar on an intermediary-mapped game, exactly like a real install.
+tasks.register("prodClient", net.fabricmc.loom.task.prod.ClientProductionRunTask) {
+    mods.from(tasks.named("remapJar"))
+    runDir = file("../../run/1.8.9-prod")
+    programArgs.addAll("--username", "CoolDev")
+    if (project.hasProperty("selftest")) jvmArgs.add("-Dcoolclient.selftest=true")
+}
+
+sourceSets.main.java.srcDir(rootProject.coreSrc)
+sourceSets.main.resources.srcDir(rootProject.coreRes)
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") { expand "version": project.version }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+    options.release = 8
+}

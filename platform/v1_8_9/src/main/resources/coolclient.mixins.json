@@ -1,0 +1,39 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.coolclient.v1_8_9.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "client": [
+    "AbstractClientPlayerEntityMixin",
+    "ArmorFeatureRendererMixin",
+    "BlockEntityRenderDispatcherMixin",
+    "ChatHudMixin",
+    "ClientPlayNetworkHandlerMixin",
+    "ClientPlayerInteractionManagerMixin",
+    "EntityMixin",
+    "EntityRenderDispatcherMixin",
+    "EntityRendererMixin",
+    "GameRendererFogMixin",
+    "GameRendererMixin",
+    "HeldItemRendererInvoker",
+    "HeldItemRendererMixin",
+    "InGameHudMixin",
+    "ItemEntityRendererMixin",
+    "ItemRendererMixin",
+    "KeyBindingAccessor",
+    "LivingEntityMixin",
+    "LivingEntityRendererMixin",
+    "MinecraftClientMixin",
+    "ParticleManagerMixin",
+    "PlayerEntityRendererMixin",
+    "PlayerInventoryMixin",
+    "PlayerListHudMixin",
+    "SpriteAtlasTextureMixin",
+    "TextRendererMixin",
+    "WorldMixin",
+    "WorldRendererMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

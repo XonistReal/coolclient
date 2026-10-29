@@ -1,0 +1,72 @@
+package dev.coolclient.core.cosmetic;
+
+import dev.coolclient.core.CoolClient;
+import dev.coolclient.core.json.Json;
+import dev.coolclient.core.net.ApiClient;
+import dev.coolclient.core.util.Time;
+
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * What the signed-in account owns, as reported by the API server. Ownership only matters when
+ * the server says it enforces it (it then hides unowned cosmetics from other players); without
+ * a server, or while it doesn't enforce, everything counts as owned.
+ */
+public final class Entitlements {
+    public static final String SUPPORTER = "supporter";
+    public static final String SUPPORTER_PLUS = "supporter_plus";
+    private static final long REFRESH_MS = 10 * 60_000L;
+
+    private final ApiClient api;
+    private volatile Set<String> owned = Collections.emptySet();
+    private volatile boolean enforced;
+    private volatile String storeUrl = "";
+    private long lastRefresh = -REFRESH_MS;
+
+    public Entitlements(ApiClient api) {
+        this.api = api;
+    }
+
+    /** True when the server hides unowned cosmetics from other players. */
+    public boolean enforced() { return enforced && api.enabled(); }
+
+    public boolean owns(Cosmetic c) {
+        if (!enforced() || c.unlock == Unlock.FREE || owned.contains(c.id)) return true;
+        if (owned.contains(SUPPORTER_PLUS)) return true;
+        return c.unlock == Unlock.SUPPORTER && owned.contains(SUPPORTER);
+    }
+
+    public boolean supporter() {
+        return owned.contains(SUPPORTER) || owned.contains(SUPPORTER_PLUS);
+    }
+
+    /** Store page for this account, or empty when the server has none. */
+    public String storeUrl() {
+        String base = storeUrl;
+        if (base.isEmpty()) return "";
+        String name = CoolClient.get().platform().game().selfName();
+        return name == null ? base : base + (base.contains("?") ? "&" : "?") + "username=" + name;
+    }
+
+    /** Re-reads store info and ownership (at most every few minutes unless forced). */
+    public void refresh(boolean force) {
+        if (!api.enabled()) return;
+        long now = Time.millis();
+        if (!force && now - lastRefresh < REFRESH_MS) return;
+        lastRefresh = now;
+        api.async("GET", "/api/store", null, false, res -> {
+            enforced = Boolean.TRUE.equals(res.get("enforced"));
+            storeUrl = Json.str(res, "url", "");
+        });
+        if (!api.authenticated()) return;
+        api.async("GET", "/api/me", null, true, res -> {
+            Object list = res.get("entitlements");
+            Set<String> s = new HashSet<String>();
+            if (list instanceof List) for (Object o : (List<?>) list) if (o instanceof String) s.add((String) o);
+            owned = s;
+        });
+    }
+}

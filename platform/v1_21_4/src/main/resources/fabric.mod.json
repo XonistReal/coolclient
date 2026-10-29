@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "coolclient",
+  "version": "${version}",
+  "name": "Cool Client",
+  "description": "A Lunar-style PvP client: smooth HUD, 50+ legit modules, animated cosmetics.",
+  "authors": ["Cool Client Team"],
+  "license": "All-Rights-Reserved",
+  "icon": "assets/coolclient/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.coolclient.v1_21_4.CoolClientMod"]
+  },
+  "mixins": ["coolclient.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "1.21.4",
+    "java": ">=21"
+  }
+}

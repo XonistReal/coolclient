@@ -1,0 +1,115 @@
+plugins {
+    id "application"
+}
+
+base { archivesName = "coolclient-launcher" }
+
+// The client jars are bundled, so their projects must be configured first.
+evaluationDependsOn(":platform:v1_8_9")
+evaluationDependsOn(":platform:v1_21_4")
+
+repositories { mavenCentral() }
+
+def lwjglVersion = "3.3.6"
+def lwjglNatives = ["natives-windows", "natives-windows-arm64", "natives-macos", "natives-macos-arm64", "natives-linux"]
+
+dependencies {
+    implementation platform("org.lwjgl:lwjgl-bom:$lwjglVersion")
+    implementation "org.lwjgl:lwjgl"
+    implementation "org.lwjgl:lwjgl-glfw"
+    implementation "org.lwjgl:lwjgl-opengl"
+    for (n in lwjglNatives) {
+        runtimeOnly "org.lwjgl:lwjgl::$n"
+        runtimeOnly "org.lwjgl:lwjgl-glfw::$n"
+        runtimeOnly "org.lwjgl:lwjgl-opengl::$n"
+    }
+}
+
+// The launcher hosts the client's own UI toolkit, so it shares core's sources and assets.
+sourceSets.main.java.srcDir(rootProject.coreSrc)
+sourceSets.main.resources.srcDir(rootProject.coreRes)
+
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(21) }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+    options.release = 21
+}
+
+// Bundle both client jars so the launcher can install them without a separate download.
+def clientJars = [
+        "1.8.9" : project(":platform:v1_8_9"),
+        "1.21.4": project(":platform:v1_21_4"),
+]
+processResources {
+    clientJars.each { ver, p ->
+        dependsOn(p.tasks.named("remapJar"))
+        from(p.tasks.named("remapJar")) {
+            into "bundled-mods"
+            rename { "coolclient-${ver}.jar" }
+        }
+    }
+    inputs.property "version", project.version
+    filesMatching("launcher.properties") { expand "version": project.version }
+}
+
+application {
+    mainClass = "dev.coolclient.launcher.Main"
+    applicationName = "CoolClientLauncher"
+    applicationDefaultJvmArgs = ["-Djava.awt.headless=true"]
+}
+
+tasks.named("run") {
+    if (project.hasProperty("selftest")) systemProperty "coolclient.launcher.selftest", project.property("selftest")
+    if (project.hasProperty("selftestPlay")) systemProperty "coolclient.launcher.selftest.play", project.property("selftestPlay")
+    if (project.hasProperty("launcherHome")) systemProperty "coolclient.launcher.home", project.property("launcherHome")
+}
+
+// ---------------------------------------------------------------- Windows app (jpackage)
+// `gradlew :launcher:packageWindows` builds "Cool Client.exe" with a trimmed Java runtime bundled,
+// then zips it into dist/. No Java install is needed to run it.
+def appVersion = project.version.toString().replaceAll(/[^0-9.].*$/, "")
+def jpackageInput = layout.buildDirectory.dir("jpackage/input")
+def jpackageOut = layout.buildDirectory.dir("jpackage/image")
+
+tasks.register("jpackageInput", Sync) {
+    dependsOn tasks.named("installDist")
+    from(layout.buildDirectory.dir("install/CoolClientLauncher/lib")) {
+        // Only this platform's natives.
+        exclude { it.name.contains("natives-") && !it.name.endsWith("natives-windows.jar") }
+    }
+    into jpackageInput
+}
+
+tasks.register("jpackageImage", Exec) {
+    dependsOn tasks.named("jpackageInput")
+    def jdk = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }.map { it.metadata.installationPath }
+    inputs.dir(jpackageInput)
+    outputs.dir(jpackageOut)
+    doFirst {
+        delete jpackageOut
+        commandLine jdk.get().file("bin/jpackage").asFile.absolutePath,
+                "--type", "app-image",
+                "--name", "Cool Client",
+                "--app-version", appVersion,
+                "--vendor", "Cool Client",
+                "--description", "Cool Client Launcher",
+                "--icon", file("packaging/icon.ico").absolutePath,
+                "--input", jpackageInput.get().asFile.absolutePath,
+                "--main-jar", "coolclient-launcher-${project.version}.jar",
+                "--main-class", "dev.coolclient.launcher.Main",
+                "--java-options", "-Djava.awt.headless=true",
+                "--add-modules", "java.base,java.desktop,java.net.http,jdk.unsupported,jdk.crypto.ec",
+                "--jlink-options", "--strip-debug --no-header-files --no-man-pages --strip-native-commands",
+                "--dest", jpackageOut.get().asFile.absolutePath
+    }
+}
+
+tasks.register("packageWindows", Zip) {
+    dependsOn tasks.named("jpackageImage")
+    from(jpackageOut)
+    archiveFileName = "CoolClientLauncher-${project.version}-windows.zip"
+    destinationDirectory = rootProject.layout.projectDirectory.dir("dist")
+}

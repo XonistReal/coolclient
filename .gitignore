@@ -1,0 +1,29 @@
+# Gradle / Java
+.gradle/
+build/
+out/
+run/
+*.class
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+bin/
+
+# Node / Electron
+node_modules/
+launcher/dist/
+launcher/resources/mods/*.jar
+server/data/
+
+# Release output
+dist/
+
+# OS
+Thumbs.db
+.DS_Store

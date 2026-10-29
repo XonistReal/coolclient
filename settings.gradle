@@ -1,0 +1,15 @@
+pluginManagement {
+    repositories {
+        maven { name = "Fabric"; url = "https://maven.fabricmc.net/" }
+        maven { name = "Legacy Fabric"; url = "https://maven.legacyfabric.net/" }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+rootProject.name = "cool-client"
+
+include "core"
+include "platform:v1_8_9"
+include "platform:v1_21_4"
+include "launcher"

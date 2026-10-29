@@ -1,0 +1,13 @@
+plugins {
+    id "net.fabricmc.fabric-loom-remap" version "${loom_version}" apply false
+    id "legacy-looming" version "${loom_version}" apply false
+}
+
+allprojects {
+    version = rootProject.mod_version
+    group = rootProject.maven_group
+}
+
+// Core sources are compiled straight into every version jar.
+ext.coreSrc = rootProject.file("core/src/main/java")
+ext.coreRes = rootProject.file("core/src/main/resources")

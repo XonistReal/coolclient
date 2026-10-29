@@ -1,0 +1,15 @@
+{
+  "name": "coolclient-api",
+  "version": "0.1.0-beta",
+  "private": true,
+  "description": "Cool Client cosmetics, entitlements, presence and news API (zero dependencies)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node -e \"process.env.AURORA_INSECURE='1'; require('./server').start(8787)\"",
+    "test": "node test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
