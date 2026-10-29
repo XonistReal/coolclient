@@ -40,7 +40,9 @@ jobs:
           cp platform/v1_21_4/build/libs/coolclient-1.21.4-*.jar release/
           cp dist/CoolClientLauncher-*-windows.zip release/
           cd release && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+      # Provenance attestations need a public repository (or GitHub Enterprise).
       - uses: actions/attest-build-provenance@v2
+        if: ${{ !github.event.repository.private }}
         with:
           subject-path: release/*
       - name: Create draft release
