@@ -5,6 +5,7 @@ import dev.coolclient.core.gui.screen.CosmeticsScreen;
 import dev.coolclient.core.gui.screen.HudEditorScreen;
 import dev.coolclient.core.gui.screen.MainMenuScreen;
 import dev.coolclient.core.gui.screen.ModMenuScreen;
+import dev.coolclient.core.gui.screen.WelcomeScreen;
 import dev.coolclient.core.modules.hud.FpsHud;
 import dev.coolclient.core.modules.visual.HandChams;
 import dev.coolclient.core.modules.visual.Skybox;
@@ -60,6 +61,12 @@ public final class SelfTest {
             switch (step) {
                 case 0:
                     if (a.platform().isLoading()) frames = 0;
+                    if (a.platform().currentScreen() instanceof WelcomeScreen && frames > 90) {
+                        shot("00-welcome");
+                        ((WelcomeScreen) a.platform().currentScreen()).accept();
+                        frames = 0;
+                        break;
+                    }
                     if (a.platform().currentScreen() instanceof MainMenuScreen && frames > 120) {
                         a.cosmetics().equip(CosmeticCatalog.get("cape_aurora"));
                         a.cosmetics().equip(CosmeticCatalog.get("wings_energy"));

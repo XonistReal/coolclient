@@ -19,6 +19,12 @@
  *   STORE_URL             store page opened by the client's Unlock button
  *   ADMIN_TOKEN           bearer token for /api/admin/* (unset = admin API off)
  *   WEBHOOK_SECRET        HMAC-SHA256 secret for /api/webhooks/payment (unset = webhook off)
+ *   TEBEX_SECRET          Tebex webhook secret for /api/webhooks/tebex (unset = Tebex off)
+ *   TEBEX_PACKAGES        optional JSON {"<package id>": ["supporter"], ...}; without it a package
+ *                         whose name is a rank or cosmetic id ("Supporter", "Supporter+",
+ *                         "cape_aurora") grants that
+ *   FOUNDER_LIMIT         how many first sign-ins get the Founder cape (default 1000, 0 = off)
+ *   TRUST_PROXY           "1" behind a reverse proxy (Caddy, nginx) so rate limits use X-Forwarded-For
  */
 const http = require('http');
 const https = require('https');
@@ -34,6 +40,11 @@ const ENFORCE = process.env.ENFORCE_ENTITLEMENTS === '1';
 const STORE_URL = process.env.STORE_URL || '';
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || '';
+const TEBEX_SECRET = process.env.TEBEX_SECRET || '';
+const TEBEX_PACKAGES = parseJsonEnv('TEBEX_PACKAGES');
+const FOUNDER_LIMIT = parseInt(process.env.FOUNDER_LIMIT || '1000', 10);
+const FOUNDER_ITEM = 'cape_founder';
+const TRUST_PROXY = process.env.TRUST_PROXY === '1';
 const DB_FILE = path.join(DATA_DIR, 'db.json');
 const ONLINE_WINDOW_MS = 3 * 60 * 1000;
 const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -42,9 +53,18 @@ const SLOTS = ['CAPE', 'WINGS', 'HAT', 'HALO', 'BANDANA', 'AURA'];
 const RANKS = ['supporter', 'supporter_plus'];
 const CATALOG = JSON.parse(fs.readFileSync(path.join(__dirname, 'catalog.json'), 'utf8')).cosmetics;
 
+function parseJsonEnv(name) {
+  try {
+    return JSON.parse(process.env[name] || '{}');
+  } catch (e) {
+    console.error(`${name} is not valid JSON; ignoring it`);
+    return {};
+  }
+}
+
 // ---------------------------------------------------------------- storage
 
-let db = { users: {}, tokens: {}, news: null, entitlements: {}, payments: {} };
+let db = { users: {}, tokens: {}, news: null, entitlements: {}, payments: {}, pending: {}, founders: 0 };
 let saveTimer = null;
 
 function load() {
@@ -194,17 +214,21 @@ function owns(uuid, id) {
   if (!tier) return false;
   if (tier === 'free') return true;
   const items = entitlementsOf(uuid);
-  if (items.includes(id) || items.includes('supporter_plus')) return true;
+  if (items.includes(id)) return true;
+  if (tier === 'exclusive') return false;
+  if (items.includes('supporter_plus')) return true;
   return tier === 'supporter' && items.includes('supporter');
 }
 
-/** What other players get to see: with enforcement on, unowned cosmetics are dropped. */
+/**
+ * What other players get to see. With enforcement on, unowned cosmetics are dropped;
+ * exclusives (the Founder cape) are always checked, even while everything else is free.
+ */
 function visibleLoadout(uuid, loadout) {
   const l = loadout || sanitizeLoadout(null);
-  if (!ENFORCE) return l;
   const out = { equipped: {}, colors: {}, chroma: {} };
   for (const [slot, id] of Object.entries(l.equipped || {})) {
-    if (!owns(uuid, id)) continue;
+    if ((ENFORCE || CATALOG[id] === 'exclusive') && !owns(uuid, id)) continue;
     out.equipped[slot] = id;
     if (l.colors && l.colors[id]) out.colors[id] = l.colors[id];
     if (l.chroma && l.chroma[id]) out.chroma[id] = true;
@@ -225,14 +249,79 @@ function changeEntitlements(uuid, items, grant) {
   return db.entitlements[uuid].items;
 }
 
-/** Resolves {uuid} or {username} (a name only works once that player has signed in). */
-function resolveUser(body) {
+/** Resolves {uuid} or {username}: known players first, then Mojang (skipped in insecure dev mode). */
+async function resolveUser(body) {
   if (typeof body.uuid === 'string' && UUID_RE.test(body.uuid)) return normUuid(body.uuid);
-  if (typeof body.username === 'string' && NAME_RE.test(body.username)) {
-    const lower = body.username.toLowerCase();
-    for (const [u, user] of Object.entries(db.users)) if ((user.name || '').toLowerCase() === lower) return u;
+  if (typeof body.username !== 'string' || !NAME_RE.test(body.username)) return null;
+  const lower = body.username.toLowerCase();
+  for (const [u, user] of Object.entries(db.users)) if ((user.name || '').toLowerCase() === lower) return u;
+  if (INSECURE) return null;
+  try {
+    const r = await getJson(`https://api.mojang.com/users/profiles/minecraft/${encodeURIComponent(body.username)}`);
+    if (r.status === 200 && r.body && UUID_RE.test(r.body.id || '')) return normUuid(r.body.id);
+  } catch (e) {
+    console.error('Mojang name lookup failed:', e.message);
   }
   return null;
+}
+
+/**
+ * Grants or revokes for a buyer. Buyers who can't be resolved yet (no Mojang lookup, or a name
+ * that never signed in) are parked under their name and settled when they first sign in.
+ */
+async function applyPurchase(target, items, grant) {
+  const u = await resolveUser(target);
+  if (u) return { uuid: u, entitlements: changeEntitlements(u, items, grant) };
+  if (typeof target.username !== 'string' || !NAME_RE.test(target.username)) return null;
+  const key = target.username.toLowerCase();
+  const list = (db.pending[key] = db.pending[key] || []);
+  list.push({ grant, items, at: Date.now() });
+  save();
+  return { pending: true, username: target.username };
+}
+
+function settlePending(name, uuid) {
+  const key = String(name).toLowerCase();
+  const list = db.pending[key];
+  if (!list) return;
+  for (const p of list) changeEntitlements(uuid, p.items, p.grant);
+  delete db.pending[key];
+  save();
+}
+
+/** Items a set of Tebex packages grants: TEBEX_PACKAGES first, else a package named after a rank or id. */
+function tebexItems(products) {
+  const out = [];
+  for (const p of Array.isArray(products) ? products : []) {
+    const mapped = TEBEX_PACKAGES[String(p && p.id)];
+    if (Array.isArray(mapped)) {
+      out.push(...mapped);
+      continue;
+    }
+    const key = String((p && p.name) || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\+/g, ' plus')
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    if (RANKS.includes(key) || CATALOG[key]) out.push(key);
+  }
+  return out;
+}
+
+/** Groups a Tebex payment's products by the Minecraft account they were bought for (gifts included). */
+function tebexBuyers(payment) {
+  const buyers = new Map();
+  const customer = (payment && payment.customer && payment.customer.username) || {};
+  for (const p of Array.isArray(payment && payment.products) ? payment.products : []) {
+    const who = (p && p.username && p.username.username) || customer.username;
+    const id = (p && p.username && p.username.id) || customer.id;
+    if (!who) continue;
+    const key = String(who).toLowerCase();
+    if (!buyers.has(key)) buyers.set(key, { target: { username: String(who), uuid: id ? String(id) : undefined }, products: [] });
+    buyers.get(key).products.push(p);
+  }
+  return [...buyers.values()];
 }
 
 function safeEqual(a, b) {
@@ -247,10 +336,18 @@ function isAdmin(req) {
   return h.startsWith('Bearer ') && safeEqual(h.slice(7), ADMIN_TOKEN);
 }
 
+function clientIp(req) {
+  if (TRUST_PROXY) {
+    const fwd = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+    if (fwd) return fwd;
+  }
+  return req.socket.remoteAddress || 'unknown';
+}
+
 // Per-IP token bucket: 120 requests per minute.
 const buckets = new Map();
 function rateLimited(req) {
-  const ip = req.socket.remoteAddress || 'unknown';
+  const ip = clientIp(req);
   const now = Date.now();
   let b = buckets.get(ip);
   if (!b) {
@@ -293,7 +390,15 @@ async function handle(req, res) {
     const now = Date.now();
     let count = 0;
     for (const seen of online.values()) if (now - seen < ONLINE_WINDOW_MS) count++;
-    return send(res, 200, { ok: true, version: VERSION, users: Object.keys(db.users).length, online: count, insecure: INSECURE, enforced: ENFORCE });
+    return send(res, 200, {
+      ok: true,
+      version: VERSION,
+      users: Object.keys(db.users).length,
+      online: count,
+      insecure: INSECURE,
+      enforced: ENFORCE,
+      founderSlotsLeft: Math.max(0, FOUNDER_LIMIT - (db.founders || 0)),
+    });
   }
 
   if (req.method === 'GET' && p === '/api/store') {
@@ -334,7 +439,15 @@ async function handle(req, res) {
     }
     const token = crypto.randomBytes(32).toString('hex');
     db.tokens[token] = { uuid, name, created: Date.now() };
-    if (!db.users[uuid]) db.users[uuid] = { name, loadout: sanitizeLoadout(null), created: Date.now() };
+    settlePending(name, uuid);
+    if (!db.users[uuid]) {
+      db.users[uuid] = { name, loadout: sanitizeLoadout(null), created: Date.now() };
+      // The first players get the Founder cape for good (real accounts only, except in dev mode).
+      if ((db.founders || 0) < FOUNDER_LIMIT && (!body.offline || INSECURE)) {
+        db.founders = (db.founders || 0) + 1;
+        changeEntitlements(uuid, [FOUNDER_ITEM], true);
+      }
+    }
     db.users[uuid].name = name;
     online.set(uuid, Date.now());
     save();
@@ -399,9 +512,9 @@ async function handle(req, res) {
   if (req.method === 'POST' && admin) {
     if (!isAdmin(req)) return send(res, 401, { error: 'Admin token required' });
     const body = await readBody(req);
-    const u = resolveUser(body);
-    if (!u) return send(res, 404, { error: 'Unknown player (give a uuid, or a name that has signed in)' });
-    return send(res, 200, { uuid: u, entitlements: changeEntitlements(u, body.items, admin[1] === 'grant') });
+    const result = await applyPurchase(body, body.items, admin[1] === 'grant');
+    if (!result) return send(res, 400, { error: 'Give a uuid or a valid Minecraft username' });
+    return send(res, 200, result);
   }
 
   // Payment provider webhook (or a small relay in front of one). The raw body must be signed:
@@ -416,13 +529,49 @@ async function handle(req, res) {
     const body = safeParse(raw.toString('utf8')) || {};
     if (typeof body.id !== 'string' || !body.id || body.id.length > 128) return send(res, 400, { error: 'Missing event id' });
     if (db.payments[body.id]) return send(res, 200, { ok: true, duplicate: true });
-    const u = resolveUser(body);
-    if (!u) return send(res, 404, { error: 'Unknown player' });
     const revoke = body.type === 'revoke';
-    const items = changeEntitlements(u, body.items, !revoke);
-    db.payments[body.id] = { uuid: u, type: revoke ? 'revoke' : 'grant', items: body.items, at: Date.now() };
+    const result = await applyPurchase(body, body.items, !revoke);
+    if (!result) return send(res, 400, { error: 'Give a uuid or a valid Minecraft username' });
+    db.payments[body.id] = { type: revoke ? 'revoke' : 'grant', items: body.items, at: Date.now() };
     save();
-    return send(res, 200, { ok: true, uuid: u, entitlements: items });
+    return send(res, 200, Object.assign({ ok: true }, result));
+  }
+
+  // Tebex (https://tebex.io) webhooks, straight from Tebex: no relay needed. Signature is
+  // hex(HMAC-SHA256(secret, hex(SHA-256(raw body)))). Purchases grant, refunds and chargebacks
+  // revoke, and an ended subscription revokes what its first payment granted.
+  if (req.method === 'POST' && p === '/api/webhooks/tebex') {
+    if (!TEBEX_SECRET) return send(res, 404, { error: 'Not found' });
+    const raw = await readRaw(req);
+    const bodyHash = crypto.createHash('sha256').update(raw).digest('hex');
+    const expected = crypto.createHmac('sha256', TEBEX_SECRET).update(bodyHash).digest('hex');
+    if (!safeEqual(String(req.headers['x-signature'] || ''), expected)) return send(res, 401, { error: 'Bad signature' });
+    const ev = safeParse(raw.toString('utf8')) || {};
+    if (ev.type === 'validation.webhook') return send(res, 200, { id: ev.id });
+    if (!ev.id) return send(res, 400, { error: 'Missing event id' });
+    const eventId = 'tebex:' + String(ev.id);
+    if (db.payments[eventId]) return send(res, 200, { ok: true, duplicate: true });
+    let payment = null;
+    let grant = true;
+    if (ev.type === 'payment.completed' || ev.type === 'payment.dispute.won') {
+      payment = ev.subject;
+    } else if (['payment.refunded', 'payment.dispute.opened', 'payment.dispute.lost'].includes(ev.type)) {
+      payment = ev.subject;
+      grant = false;
+    } else if (ev.type === 'recurring-payment.ended') {
+      payment = ev.subject && ev.subject.initial_payment;
+      grant = false;
+    }
+    const results = [];
+    if (payment) {
+      for (const b of tebexBuyers(payment)) {
+        const items = tebexItems(b.products);
+        if (items.length) results.push(await applyPurchase(b.target, items, grant));
+      }
+    }
+    db.payments[eventId] = { type: ev.type, at: Date.now(), results: results.length };
+    save();
+    return send(res, 200, { ok: true, applied: results });
   }
 
   return send(res, 404, { error: 'Not found' });
@@ -453,4 +602,4 @@ function start(port) {
 
 if (require.main === module) start(PORT);
 
-module.exports = { start, sanitizeLoadout, normUuid, owns, visibleLoadout };
+module.exports = { start, sanitizeLoadout, normUuid, owns, visibleLoadout, tebexItems };

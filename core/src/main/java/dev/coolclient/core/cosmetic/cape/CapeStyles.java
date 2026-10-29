@@ -182,6 +182,26 @@ public final class CapeStyles {
         return add(c, 0xFFFFFFFF, sheen * 0.25f);
     };
 
+    /** Founder cape: black and gold, a pulsing five-point star and a slow gold sheen. */
+    public static final CapeStyle FOUNDER = (u, v, t, tint) -> {
+        int base = Colors.lerp(0xFF17120A, 0xFF070604, v);
+        float edge = Math.min(Math.min(u, 1 - u) * 10f / 1.4f, Math.min(v, 1 - v) * 16f / 1.4f);
+        float sheen = clamp01(1f - Math.abs(frac(u * 0.7f + v * 0.5f - t * 0.18f) - 0.5f) * 6f);
+        int gold = Colors.lerp(0xFFB8862B, 0xFFFFE08A, sheen);
+        if (edge < 1f) return Colors.lerp(gold, base, edge);
+        float x = (u - 0.5f) * 10f, y = (v - 0.40f) * 16f;
+        double a = Math.atan2(x, -y);
+        double r = Math.sqrt(x * x + y * y);
+        double star = 2.7 * (0.42 + 0.58 * Math.pow(Math.abs(Math.cos(a * 2.5)), 2.5));
+        if (r < star) {
+            float pulse = 0.85f + 0.15f * (float) Math.sin(t * 2.0f);
+            return Colors.brighten(gold, pulse);
+        }
+        float halo = clamp01(1f - (float) (r - star) / 3.5f);
+        int c = add(base, 0xFFFFC83A, halo * halo * 0.35f);
+        return add(c, 0xFFFFE9B0, stars(u, v, t, 0.04f, 77));
+    };
+
     /** Branded cape: deep navy, accent border and a glowing chevron emblem. */
     public static final CapeStyle COOL_LOGO = (u, v, t, tint) -> {
         int base = Colors.lerp(0xFF0E1426, 0xFF070A14, v);

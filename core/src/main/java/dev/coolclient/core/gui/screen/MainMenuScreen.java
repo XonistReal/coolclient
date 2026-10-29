@@ -11,6 +11,7 @@ import dev.coolclient.core.render.Colors;
 import dev.coolclient.core.render.Draw;
 import dev.coolclient.core.render.Icons;
 import dev.coolclient.core.render.Theme;
+import dev.coolclient.core.util.Scheduler;
 import dev.coolclient.core.util.Time;
 
 import java.util.ArrayList;
@@ -18,10 +19,12 @@ import java.util.List;
 
 /** Cool Client's title screen. */
 public final class MainMenuScreen extends UIScreen {
+    private static boolean welcomeChecked;
     private final List<Button> buttons = new ArrayList<Button>();
     private Button cosmetics;
     private Button settings;
     private Button themes;
+    private Button support;
 
     public MainMenuScreen() {
         super(null);
@@ -46,6 +49,10 @@ public final class MainMenuScreen extends UIScreen {
         cosmetics = btn("", Icons.Icon.HANGER, () -> CoolClient.get().platform().openScreen(new CosmeticsScreen(self)), width - 30, 8, 22, 22).radius(11);
         settings = btn("", Icons.Icon.GLOBE, () -> CoolClient.get().platform().openVanilla(VanillaScreen.LANGUAGE, self), width - 56, 8, 22, 22).radius(11);
         themes = btn("", Icons.Icon.PALETTE, () -> CoolClient.get().platform().openScreen(ModMenuScreen.themes(self)), width - 82, 8, 22, 22).radius(11);
+        support = btn("Support", Icons.Icon.STAR, () -> {
+            String url = CoolClient.get().cosmetics().entitlements().storeUrl();
+            if (!url.isEmpty()) CoolClient.get().platform().openUrl(url);
+        }, width - 162, 8, 74, 22).radius(11).primary();
     }
 
     private static Button btn(String label, Icons.Icon icon, Runnable action, float x, float y, float w, float h) {
@@ -56,6 +63,13 @@ public final class MainMenuScreen extends UIScreen {
 
     @Override
     public void render(GuiRenderer r, float mx, float my, float delta) {
+        if (!welcomeChecked) {
+            welcomeChecked = true;
+            if (WelcomeScreen.needed()) {
+                final UIScreen self = this;
+                Scheduler.main(() -> CoolClient.get().platform().openScreen(new WelcomeScreen(self)));
+            }
+        }
         float t = (float) Time.seconds();
         MenuBackground.draw(r, width, height, t);
 
@@ -83,6 +97,9 @@ public final class MainMenuScreen extends UIScreen {
         cosmetics.render(r, mx, my);
         settings.render(r, mx, my);
         themes.render(r, mx, my);
+        // Only once the API server has a store link (STORE_URL) configured.
+        boolean store = !CoolClient.get().cosmetics().entitlements().storeUrl().isEmpty();
+        if (store) support.render(r, mx, my);
 
         FontRenderer sf = Fonts.small();
         sf.draw(r, CoolClient.NAME + " " + CoolClient.VERSION + "  ·  Minecraft " + CoolClient.get().platform().minecraftVersion(),
@@ -104,6 +121,7 @@ public final class MainMenuScreen extends UIScreen {
         for (Button b : buttons) if (b.mouseClicked(mx, my, button)) return true;
         if (cosmetics.mouseClicked(mx, my, button)) return true;
         if (themes.mouseClicked(mx, my, button)) return true;
+        if (!CoolClient.get().cosmetics().entitlements().storeUrl().isEmpty() && support.mouseClicked(mx, my, button)) return true;
         return settings.mouseClicked(mx, my, button);
     }
 

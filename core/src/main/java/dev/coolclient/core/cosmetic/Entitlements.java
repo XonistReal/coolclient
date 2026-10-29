@@ -34,6 +34,8 @@ public final class Entitlements {
     public boolean enforced() { return enforced && api.enabled(); }
 
     public boolean owns(Cosmetic c) {
+        // Exclusives are hidden from others even while everything else is free.
+        if (c.unlock == Unlock.EXCLUSIVE) return owned.contains(c.id);
         if (!enforced() || c.unlock == Unlock.FREE || owned.contains(c.id)) return true;
         if (owned.contains(SUPPORTER_PLUS)) return true;
         return c.unlock == Unlock.SUPPORTER && owned.contains(SUPPORTER);

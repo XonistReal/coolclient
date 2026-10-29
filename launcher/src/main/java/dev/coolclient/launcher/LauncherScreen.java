@@ -546,6 +546,10 @@ final class LauncherScreen extends UIScreen {
             Fonts.body().drawCentered(r, "Sign in with Microsoft", bx + bw / 2f, ry + 5.5f, Theme.ON_ACCENT, false);
             if (c.settings.msClientId.isEmpty()) {
                 Fonts.small().drawCentered(r, "Needs a Microsoft app ID in Settings first", bx + bw / 2f, ry + 24, Theme.TEXT_FAINT, false);
+            } else {
+                // Device-code sign-in: the password is typed on microsoft.com, never in the launcher.
+                Fonts.small().drawCentered(r, "You sign in on microsoft.com. Cool Client never sees your password.",
+                        bx + bw / 2f, ry + 24, Theme.TEXT_FAINT, false);
             }
         }
         ry += 38;

@@ -5,9 +5,22 @@ shipped as a single Fabric mod per version. It includes 60+ legit modules, a dra
 animated cosmetics, a custom main menu, 10 themes and shader skyboxes. The whole UI is drawn with
 GPU shaders: anti-aliased SDF shapes, frosted glass and animated backgrounds.
 
+![Cool Client main menu](docs/screenshots/main-menu.png)
+
 > Cool Client is not a hacked client. Every module is visual, informational or quality of life.
 > There is no reach, aim assist, ESP or auto-clicking. Hand Chams only recolour **your own**
 > first-person hand.
+
+## Is it safe?
+
+- **Every download is built by GitHub from this source**, not on anyone's PC, and comes with
+  SHA-256 checksums and a signed provenance record you can check. See [SECURITY.md](SECURITY.md).
+- **Your password never touches Cool Client.** Microsoft sign-in happens on microsoft.com, and
+  Cool Client's server never receives your Microsoft or Minecraft token.
+- **No ads, no analytics, no hidden downloads.** The game only contacts the Cool Client server
+  if you turn on online cosmetics, and the welcome screen tells you exactly what that sends.
+  See [PRIVACY.md](PRIVACY.md).
+- **No obfuscation.** The mod is plain Java; you (or any AI assistant) can read all of it here.
 
 ## Cool Client Launcher (easiest)
 
@@ -113,3 +126,8 @@ automated screenshot tour, which saves screenshots to `run/<version>/screenshots
 
 See [PLAN.md](PLAN.md) for the full plan and roadmap, and [MONETIZATION.md](MONETIZATION.md) for how
 the cosmetics store works while the code stays open source.
+
+## License
+
+Cool Client is free software under the [GNU GPL v3](LICENSE). The name and logo aren't covered by
+the license; see [TRADEMARKS.md](TRADEMARKS.md).

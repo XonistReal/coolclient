@@ -17,7 +17,8 @@ cosmetics: **sell what other players see, not what the client can do.**
 | Unlock tier per cosmetic: Free, Supporter, Store | `core/.../cosmetic/Unlock.java`, `server/catalog.json` |
 | Ownership from the server, "Unlock" button and tier chips in the locker | `core/.../cosmetic/Entitlements.java`, `CosmeticsScreen` |
 | Gold nametag badge for supporters (instead of the aqua one) | `PlayerRendererMixin` (1.21.4), `EntityRendererMixin` (1.8.9) |
-| Server: enforcement, store info, admin grants, signed payment webhook | `server/server.js` |
+| Server: enforcement, store info, admin grants, Tebex webhook, generic signed webhook | `server/server.js` |
+| Command-line grants for donors, giveaways and creators | `server/admin.js` |
 | Test that the client and server tier lists match | `core/src/test/.../CatalogSyncTest.java` |
 
 Default tiers come from rarity: common and rare are free, epic and legendary come with
@@ -27,31 +28,42 @@ edit `Unlock.forRarity` (or give a cosmetic its own tier) and `server/catalog.js
 
 Nothing changes for players until you turn enforcement on, so the beta keeps "everything is free".
 
-## Turning it on
-
-Run the API server with:
+## Server settings
 
 | Variable | Meaning |
 |---|---|
 | `ENFORCE_ENTITLEMENTS=1` | Hide unowned paid cosmetics from other players, and show locks in the client. |
 | `STORE_URL=https://...` | Opened by the client's Unlock button (`?username=<name>` is appended). |
-| `ADMIN_TOKEN=<long random string>` | Enables `POST /api/admin/grant` and `/api/admin/revoke`. |
-| `WEBHOOK_SECRET=<long random string>` | Enables `POST /api/webhooks/payment`. |
+| `ADMIN_TOKEN=<long random string>` | Enables `/api/admin/grant`, `/api/admin/revoke` and `admin.js`. |
+| `TEBEX_SECRET=<from Tebex>` | Enables `POST /api/webhooks/tebex` (Tebex directly, no relay). |
+| `TEBEX_PACKAGES={"123":["supporter"]}` | Optional: which Tebex package grants what. Without it, a package named `Supporter`, `Supporter+` or a cosmetic id (`cape_aurora`) grants that. |
+| `WEBHOOK_SECRET=<long random string>` | Enables `POST /api/webhooks/payment` (any other provider, through a relay). |
 
-Grant by hand (support tickets, giveaways, creator codes):
+Grant by hand (donors, support tickets, giveaways, creators):
 
 ```bash
-curl -X POST https://api.example.com/api/admin/grant \
-  -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-  -d '{"username":"Notch","items":["supporter"]}'
+API_URL=https://api.example.com ADMIN_TOKEN=... node server/admin.js grant Notch supporter
 ```
 
-`items` takes cosmetic ids from `catalog.json` and the ranks `supporter` and `supporter_plus`.
-A `username` only resolves once that player has signed in to the API; a `uuid` always works.
+Items are cosmetic ids from `catalog.json` or the ranks `supporter` and `supporter_plus`. A name
+resolves through Mojang; if that fails (or in dev mode) the grant waits until the player first signs in.
 
-## Connecting a payment provider
+## Payment webhooks
 
-The webhook takes one simple, provider-neutral shape, so the store can be anything:
+**Tebex**, directly (no relay):
+
+1. Name the packages `Supporter` and `Supporter+`, or after a cosmetic id (`cape_aurora`), or map
+   package ids with `TEBEX_PACKAGES`.
+2. In Tebex, Developers, then Webhooks: add `https://<your api>/api/webhooks/tebex`, put the secret
+   in `TEBEX_SECRET`, restart the server, then press **Validate**.
+3. Set `STORE_URL` to your Tebex webstore address.
+
+The server grants on `payment.completed` (and `payment.dispute.won`), revokes on refunds and
+chargebacks, revokes a subscription's items when `recurring-payment.ended` arrives, ignores
+replays, and holds purchases for players who haven't launched the client yet.
+
+**Any other provider** through the generic signed webhook. It takes one provider-neutral shape, so
+a ~30-line relay can adapt any provider:
 
 ```
 POST /api/webhooks/payment
@@ -61,9 +73,8 @@ X-Signature: sha256=<hex HMAC-SHA256 of the raw body, keyed with WEBHOOK_SECRET>
 ```
 
 The `id` makes retries safe: a repeated id is acknowledged and ignored. Use `revoke` for refunds
-and chargebacks.
-
-Keep the relay (and its provider keys) out of this repo, or in a private one.
+and chargebacks. For Stripe, put the username in a checkout custom field and relay
+`checkout.session.completed` and `charge.refunded`. Keep relays and provider keys out of this repo.
 
 ## Staying within Mojang's rules
 
@@ -78,12 +89,6 @@ This is a summary, not legal advice; read the guidelines before you launch.
 
 ## Licensing
 
-There is no LICENSE file yet, which means the code isn't actually open source until one is
-added. Two common setups for a project like this:
-
-- **GPL-3.0** for the code: forks must stay open source, which stops someone closing it up
-  and reselling it. Add a trademark note that "Cool Client", the logo and cosmetic designs
-  aren't covered.
-- **MIT or Apache-2.0** for the code: most permissive; forks can be closed. Same trademark note.
-
-Either way, the money stays with whoever runs the official API server and owns the brand.
+The code is GPL-3.0 ([LICENSE](LICENSE)): forks must stay open source, so nobody can close it up
+and resell it. The name and logo are kept separately ([TRADEMARKS.md](TRADEMARKS.md)), so the
+money stays with whoever runs the official API server and owns the brand.

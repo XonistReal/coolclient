@@ -1,5 +1,5 @@
 {
-  "_comment": "Unlock tier per cosmetic: free, supporter (Supporter rank) or store (sold alone, or with Supporter+). Keep in sync with Unlock.forRarity in core; CatalogSyncTest checks it.",
+  "_comment": "Unlock tier per cosmetic: free, supporter (Supporter rank), store (sold alone, or with Supporter+) or exclusive (never sold; granted by the server). Keep in sync with Unlock in core; CatalogSyncTest checks it.",
   "cosmetics": {
     "cape_aurora": "store",
     "cape_logo": "supporter",
@@ -12,6 +12,7 @@
     "cape_void": "supporter",
     "cape_sakura": "free",
     "cape_storm": "supporter",
+    "cape_founder": "exclusive",
     "cape_gradient": "free",
     "wings_dragon": "supporter",
     "wings_angel": "supporter",

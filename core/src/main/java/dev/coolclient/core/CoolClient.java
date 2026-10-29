@@ -30,6 +30,11 @@ import dev.coolclient.core.waypoint.WaypointManager;
 public final class CoolClient {
     public static final String NAME = "Cool Client";
     public static final String VERSION = "0.1.0-beta";
+    // Set these two before a public release.
+    /** Public source repository (shown on the welcome screen). */
+    public static final String SOURCE_URL = "https://github.com/XonistReal/coolclient";
+    /** The official API server (cosmetics, entitlements). */
+    public static final String DEFAULT_API_URL = "http://localhost:8787";
 
     private static CoolClient instance;
 

@@ -18,6 +18,11 @@ public abstract class Cosmetic {
 
     protected Cosmetic(String id, String name, String description, CosmeticType type, Rarity rarity,
                        int defaultColor, boolean tintable, boolean animated) {
+        this(id, name, description, type, rarity, defaultColor, tintable, animated, Unlock.forRarity(rarity));
+    }
+
+    protected Cosmetic(String id, String name, String description, CosmeticType type, Rarity rarity,
+                       int defaultColor, boolean tintable, boolean animated, Unlock unlock) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -26,7 +31,7 @@ public abstract class Cosmetic {
         this.defaultColor = defaultColor;
         this.tintable = tintable;
         this.animated = animated;
-        this.unlock = Unlock.forRarity(rarity);
+        this.unlock = unlock;
     }
 
     /**

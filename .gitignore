@@ -27,3 +27,6 @@ dist/
 # OS
 Thumbs.db
 .DS_Store
+
+# Server secrets
+server/.env

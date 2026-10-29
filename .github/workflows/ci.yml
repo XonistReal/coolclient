@@ -1,0 +1,29 @@
+# Builds and tests every push and pull request, so anyone can see the code compiles and passes.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: API server tests
+        run: node server/test.js
+      - name: API server Docker image builds
+        run: docker build -t coolclient-api server
+      - name: Build client jars and launcher, run core tests
+        run: ./gradlew build

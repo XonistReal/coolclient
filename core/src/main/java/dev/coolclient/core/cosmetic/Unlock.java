@@ -10,7 +10,9 @@ public enum Unlock {
     /** Included with the Supporter rank (or Supporter+). */
     SUPPORTER("Supporter", 0xFFFFC83A),
     /** Sold individually in the store, or included with Supporter+. */
-    STORE("Store", 0xFFFF5470);
+    STORE("Store", 0xFFFF5470),
+    /** Never sold: granted by the server (the Founder cape goes to the first players). */
+    EXCLUSIVE("Exclusive", 0xFFFFD34D);
 
     public final String displayName;
     public final int color;

@@ -12,7 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Every cosmetic in the client. All are free to equip in the beta. */
+/** Every cosmetic in the client. Unlock tiers are in {@link Unlock}; nothing is locked until the server enforces it. */
 public final class CosmeticCatalog {
     private static final Map<String, Cosmetic> ALL = new LinkedHashMap<String, Cosmetic>();
 
@@ -29,6 +29,7 @@ public final class CosmeticCatalog {
         add(new CapeCosmetic("cape_void", "Void", "Stare into it.", Rarity.EPIC, CapeStyles.VOID, 0xFFB14DFF, false, true));
         add(new CapeCosmetic("cape_sakura", "Sakura", "Cherry petals on the breeze.", Rarity.RARE, CapeStyles.SAKURA, 0xFFFF7FB0, false, true));
         add(new CapeCosmetic("cape_storm", "Thunderstorm", "Lightning strikes every few seconds.", Rarity.EPIC, CapeStyles.STORM, 0xFF8FB3FF, false, true));
+        add(new CapeCosmetic("cape_founder", "Founder", "For the first players. Never sold.", Rarity.MYTHIC, CapeStyles.FOUNDER, 0xFFFFC83A, false, true, Unlock.EXCLUSIVE));
         add(new CapeCosmetic("cape_gradient", "Custom Gradient", "Your colour, with a moving sheen.", Rarity.COMMON, CapeStyles.GRADIENT, 0xFF8A5CFF, true, true));
 
         // Wings

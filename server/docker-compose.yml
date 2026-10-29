@@ -1,0 +1,30 @@
+# One-command deploy: `docker compose up -d` on any small Linux VPS.
+# Caddy gets an HTTPS certificate for API_DOMAIN automatically (point the domain's A record at the VPS first).
+services:
+  api:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TRUST_PROXY: "1"
+    volumes:
+      - api-data:/data
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on: [api]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      API_DOMAIN: ${API_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  api-data:
+  caddy-data:
+  caddy-config:

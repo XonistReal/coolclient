@@ -40,7 +40,7 @@ public final class ClientSettings extends Module {
     public final BoolSetting notifications = add(new BoolSetting("Notifications", true));
     public final BoolSetting onlineFeatures = add(new BoolSetting("Online Features", false)
             .describe("Share cosmetics with other players through a Cool Client API server"));
-    public final TextSetting apiUrl = add(new TextSetting("API Server", "http://localhost:8787"));
+    public final TextSetting apiUrl = add(new TextSetting("API Server", dev.coolclient.core.CoolClient.DEFAULT_API_URL));
     public final BoolSetting windowTitle = add(new BoolSetting("Branded Window Title", true));
 
     private static final String THEME_DEFAULT = "Theme Default";
