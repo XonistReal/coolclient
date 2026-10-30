@@ -168,6 +168,8 @@ final class GameState21 implements GameState {
 
     @Override public boolean hudHidden() { return mc().options.hideGui; }
 
+    @Override public void setHudHidden(boolean hidden) { mc().options.hideGui = hidden; }
+
     @Override public boolean debugOpen() { return mc().getDebugOverlay().showDebugScreen(); }
 
     private static KeyMapping binding(String name) {

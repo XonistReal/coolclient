@@ -10,6 +10,12 @@ loom {
             runDir = "../../run/1.21.4"
             programArgs "--username", "CoolDev"
             if (project.hasProperty("selftest")) vmArg "-Dcoolclient.selftest=true"
+            if (project.hasProperty("terrain")) vmArg "-Dcoolclient.selftest.terrain=true"
+            // -Pwindow=1920x1080 for high-resolution screenshots (store pages, videos).
+            if (project.hasProperty("window")) {
+                def size = project.property("window").toString().split("x")
+                programArgs "--width", size[0], "--height", size[1]
+            }
         }
     }
 }

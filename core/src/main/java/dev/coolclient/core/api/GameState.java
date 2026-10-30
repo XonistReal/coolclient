@@ -76,6 +76,9 @@ public interface GameState {
     /** True when the F1 "hide HUD" toggle is active. */
     boolean hudHidden();
 
+    /** Sets the F1 "hide HUD" toggle (used for clean screenshots). */
+    default void setHudHidden(boolean hidden) {}
+
     /** True when the F3 debug screen is visible. */
     boolean debugOpen();
 

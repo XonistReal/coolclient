@@ -47,6 +47,11 @@ public final class SelfTest {
         driver.screenshot("coolclient-selftest-" + name);
     }
 
+    /** Turns the camera (MC yaw: 0 = south, -90 = east; negative pitch looks up). */
+    private static void look(CoolClient a, int yaw, int pitch) {
+        a.platform().sendChat("/tp @s ~ ~ ~ " + yaw + " " + pitch);
+    }
+
     private static void next() {
         step++;
         frames = 0;
@@ -169,6 +174,14 @@ public final class SelfTest {
                         next();
                         a.platform().openScreen(null);
                         a.modules().get(Skybox.class).style.set(SkyStyle.NEBULA.displayName);
+                        // Clean sky shots: no HUD or chat, camera aimed at each sky's centrepiece.
+                        a.platform().sendChat("/gamerule sendCommandFeedback false");
+                        a.platform().game().setHudHidden(true);
+                        // A floating spectator camera above the terrain for aerial sky shots.
+                        a.platform().sendChat("/gamemode spectator");
+                        a.platform().sendChat("/time set 18000");
+                        a.platform().sendChat("/tp @s ~ ~40 ~");
+                        look(a, 30, -20);
                     }
                     break;
                 case 10:
@@ -176,17 +189,53 @@ public final class SelfTest {
                         shot("11-sky-nebula");
                         next();
                         a.modules().get(Skybox.class).style.set(SkyStyle.SUNSET.displayName);
+                        look(a, -76, -8);
                     }
                     break;
                 case 11:
                     if (frames > 60) {
                         shot("12-sky-sunset");
                         next();
+                        a.modules().get(Skybox.class).style.set(SkyStyle.SYNTHWAVE.displayName);
+                        look(a, 180, -6);
+                    }
+                    break;
+                case 12:
+                    if (frames > 60) {
+                        shot("12b-sky-synthwave");
+                        next();
+                        a.modules().get(Skybox.class).style.set(SkyStyle.BLOOD_MOON.displayName);
+                        look(a, 138, -20);
+                    }
+                    break;
+                case 13:
+                    if (frames > 60) {
+                        shot("12c-sky-blood-moon");
+                        next();
+                        a.modules().get(Skybox.class).style.set(SkyStyle.SPACE.displayName);
+                        look(a, -160, -25);
+                    }
+                    break;
+                case 14:
+                    if (frames > 60) {
+                        shot("12d-sky-deep-space");
+                        step = 114;
+                        frames = 0;
+                        a.modules().get(Skybox.class).style.set(SkyStyle.AURORA.displayName);
+                        look(a, 0, -22);
+                    }
+                    break;
+                case 114:
+                    if (frames > 60) {
+                        shot("12e-sky-aurora");
+                        step = 15;
+                        frames = 0;
+                        a.platform().game().setHudHidden(false);
                         a.client().theme.set("Snow");
                         a.platform().openScreen(new ModMenuScreen(null));
                     }
                     break;
-                case 12:
+                case 15:
                     if (frames > 60) {
                         shot("13-theme-snow");
                         next();
@@ -195,7 +244,7 @@ public final class SelfTest {
                         a.platform().openScreen(null);
                     }
                     break;
-                case 13:
+                case 16:
                     if (frames > 20) {
                         Log.info("Self-test complete");
                         driver = null;

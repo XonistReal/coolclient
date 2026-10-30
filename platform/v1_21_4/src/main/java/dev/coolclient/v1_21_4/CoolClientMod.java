@@ -43,8 +43,11 @@ public class CoolClientMod implements ClientModInitializer {
                 String level = name + "-" + System.currentTimeMillis();
                 LevelSettings settings = new LevelSettings(level, GameType.CREATIVE, false, Difficulty.PEACEFUL, true,
                         new GameRules(WorldDataConfiguration.DEFAULT.enabledFeatures()), WorldDataConfiguration.DEFAULT);
+                // -Dcoolclient.selftest.terrain=true: real terrain instead of superflat (for promo shots).
+                boolean terrain = Boolean.getBoolean("coolclient.selftest.terrain");
                 Minecraft.getInstance().createWorldOpenFlows().createFreshLevel(level, settings,
-                        new WorldOptions(4242L, false, false), WorldPresets::createFlatWorldDimensions, null);
+                        new WorldOptions(4242L, false, false),
+                        terrain ? WorldPresets::createNormalWorldDimensions : WorldPresets::createFlatWorldDimensions, null);
             }
         });
     }
