@@ -1,7 +1,8 @@
 # Pushing a tag like v0.1.0-beta builds every download on GitHub's own machines, straight from
 # the tagged source, and attaches signed build provenance. Anyone can then check that a file came
 # from this repository and this workflow:  gh attestation verify <file> --repo <owner>/<repo>
-# The release is created as a draft so it can be reviewed (and the launcher code-signed) first.
+# The release is created as a draft so it can be reviewed first. Releases carry the two mod jars;
+# the launcher joins them once it's code-signed.
 name: Release
 
 on:
@@ -31,14 +32,13 @@ jobs:
           node-version: "20"
       - name: API server tests
         run: node server/test.js
-      - name: Build and test everything, package the Windows launcher
-        run: ./gradlew build :launcher:packageWindows
+      - name: Build and test everything
+        run: ./gradlew build
       - name: Collect release files and checksums
         run: |
           mkdir release
           cp platform/v1_8_9/build/libs/coolclient-1.8.9-*.jar release/
           cp platform/v1_21_4/build/libs/coolclient-1.21.4-*.jar release/
-          cp dist/CoolClientLauncher-*-windows.zip release/
           cd release && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
       # Provenance attestations need a public repository (or GitHub Enterprise).
       - uses: actions/attest-build-provenance@v2

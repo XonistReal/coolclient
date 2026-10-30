@@ -16,8 +16,6 @@ You shouldn't have to take anyone's word for it, so here is what you can check w
 - **Your password never touches Cool Client.** Microsoft sign-in happens on microsoft.com.
   The Cool Client server verifies accounts the same way Minecraft servers do, so it never
   receives your Microsoft or Minecraft token.
-- **No cheats.** Every module is visual, informational or quality of life, so using it
-  doesn't put your account at risk on servers that allow clients.
 
 ## Reporting a vulnerability
 

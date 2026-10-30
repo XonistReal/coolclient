@@ -1,15 +1,11 @@
 # Cool Client
 
 A Lunar-style PvP client for **Minecraft 1.8.9** (classic PvP) and **1.21.4** (crystal PvP),
-shipped as a single Fabric mod per version. It includes 60+ legit modules, a drag-and-drop HUD,
+shipped as a single Fabric mod per version. It includes 60+ modules, a drag-and-drop HUD,
 animated cosmetics, a custom main menu, 10 themes and shader skyboxes. The whole UI is drawn with
 GPU shaders: anti-aliased SDF shapes, frosted glass and animated backgrounds.
 
 ![Cool Client main menu](docs/screenshots/main-menu.png)
-
-> Cool Client is not a hacked client. Every module is visual, informational or quality of life.
-> There is no reach, aim assist, ESP or auto-clicking. Hand Chams only recolour **your own**
-> first-person hand.
 
 ## Is it safe?
 
@@ -22,7 +18,27 @@ GPU shaders: anti-aliased SDF shapes, frosted glass and animated backgrounds.
   See [PRIVACY.md](PRIVACY.md).
 - **No obfuscation.** The mod is plain Java; you (or any AI assistant) can read all of it here.
 
-## Cool Client Launcher (easiest)
+## Install
+
+Download the jar for your Minecraft version from the
+[latest release](https://github.com/XonistReal/coolclient/releases/latest).
+
+### 1.21.4
+1. Install [Fabric Loader](https://fabricmc.net/use/) 0.16 or newer for 1.21.4.
+2. Put `coolclient-1.21.4-0.1.0-beta.jar` in `.minecraft/mods`.
+3. Launch the Fabric 1.21.4 profile.
+
+Fabric API is **not** required (Cool Client works with or without it).
+
+### 1.8.9
+1. Install [Legacy Fabric](https://legacyfabric.net/) Loader 0.16 or newer for 1.8.9.
+2. Put `coolclient-1.8.9-0.1.0-beta.jar` in the mods folder of that profile.
+3. Launch the Legacy Fabric 1.8.9 profile.
+
+## Cool Client Launcher (coming soon)
+
+The launcher isn't in the releases yet: it ships once it's code-signed, so Windows doesn't warn
+about it. To try it now, build it from source (see [Building from source](#building-from-source)).
 
 1. Unzip `CoolClientLauncher-0.1.0-beta-windows.zip` anywhere and run **Cool Client.exe**.
    Java is bundled, so nothing else needs installing.
@@ -40,20 +56,6 @@ Cosmetics and client settings are shared between both versions and the launcher'
 2. Under *Authentication*, turn on *Allow public client flows*.
 3. Ask Mojang to approve the app for the Minecraft API (form: <https://aka.ms/mce-reviewappid>).
 4. Paste the *Application (client) ID* into the launcher's Settings, under *Microsoft app ID*.
-
-## Install (as a mod)
-
-### 1.21.4
-1. Install [Fabric Loader](https://fabricmc.net/use/) 0.16 or newer for 1.21.4.
-2. Put `coolclient-1.21.4-0.1.0-beta.jar` in `.minecraft/mods`.
-3. Launch the Fabric 1.21.4 profile.
-
-Fabric API is **not** required (Cool Client works with or without it).
-
-### 1.8.9
-1. Install [Legacy Fabric](https://legacyfabric.net/) Loader 0.16 or newer for 1.8.9.
-2. Put `coolclient-1.8.9-0.1.0-beta.jar` in the mods folder of that profile.
-3. Launch the Legacy Fabric 1.8.9 profile.
 
 ## Controls
 
