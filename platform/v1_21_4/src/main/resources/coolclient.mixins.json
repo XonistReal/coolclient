@@ -10,6 +10,7 @@
     "CameraMixin",
     "ChatComponentInvoker",
     "ChatComponentMixin",
+    "ClientLevelDataMixin",
     "ClientPacketListenerMixin",
     "EndCrystalRendererMixin",
     "EntityMixin",

@@ -59,6 +59,16 @@ public abstract class ItemInHandRendererMixin {
         pose.translate(vm.x.f() * side, vm.y.f(), vm.z.f());
         pose.mulPose(new Quaternionf().rotationXYZ((float) Math.toRadians(vm.rotX.f()),
                 (float) Math.toRadians(vm.rotY.f() * side), (float) Math.toRadians(vm.rotZ.f() * side)));
+    }
+
+    /** Scale around the item itself: scaling at the camera (above) shrinks it toward the eye and looks identical. */
+    @Inject(method = "renderArmWithItem", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;renderItem(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ItemDisplayContext;ZLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V"))
+    private void cool$viewModelScale(AbstractClientPlayer player, float tickDelta, float pitch, InteractionHand hand, float swing,
+                                     ItemStack stack, float equip, PoseStack pose, MultiBufferSource buffers, int light, CallbackInfo ci) {
+        if (!Hooks21.ready()) return;
+        ViewModel vm = CoolClient.get().modules().get(ViewModel.class);
+        if (vm == null || !vm.hasTransform()) return;
         float s = vm.scale.f();
         pose.scale(s, s, s);
     }

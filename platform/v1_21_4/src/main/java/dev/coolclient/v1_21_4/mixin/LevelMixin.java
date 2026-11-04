@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** Client-side weather and time overrides (never touches the server world). */
+/** Client-side weather override (never touches the server world). Time is in {@link ClientLevelDataMixin}. */
 @Mixin(Level.class)
 public abstract class LevelMixin {
     @Shadow @Final public boolean isClientSide;
@@ -30,12 +30,5 @@ public abstract class LevelMixin {
     @Inject(method = "getThunderLevel", at = @At("HEAD"), cancellable = true)
     private void cool$thunder(float delta, CallbackInfoReturnable<Float> cir) {
         if (cool$clear()) cir.setReturnValue(0f);
-    }
-
-    @Inject(method = "getDayTime", at = @At("HEAD"), cancellable = true)
-    private void cool$time(CallbackInfoReturnable<Long> cir) {
-        if (!isClientSide || !Hooks21.ready()) return;
-        VisualTweaks.TimeChanger t = CoolClient.get().modules().get(VisualTweaks.TimeChanger.class);
-        if (t != null && t.isEnabled()) cir.setReturnValue((long) t.time.d());
     }
 }

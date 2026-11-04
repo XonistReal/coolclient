@@ -96,6 +96,15 @@ public abstract class HeldItemRendererMixin {
         GlStateManager.rotate(vm.rotX.f(), 1f, 0f, 0f);
         GlStateManager.rotate(vm.rotY.f(), 0f, 1f, 0f);
         GlStateManager.rotate(vm.rotZ.f(), 0f, 0f, 1f);
+    }
+
+    /** Scale around the item itself: scaling at the camera (above) shrinks it toward the eye and looks identical. */
+    @Inject(method = "renderArmHoldingItem", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/render/item/HeldItemRenderer;renderItem(Lnet/minecraft/entity/LivingEntity;Lnet/minecraft/item/ItemStack;Lnet/minecraft/client/render/model/json/ModelTransformation$Mode;)V"))
+    private void cool$viewModelScale(float tickDelta, CallbackInfo ci) {
+        if (!Hooks189.ready()) return;
+        ViewModel vm = CoolClient.get().modules().get(ViewModel.class);
+        if (vm == null || !vm.hasTransform()) return;
         float s = vm.scale.f();
         GlStateManager.scale(s, s, s);
     }

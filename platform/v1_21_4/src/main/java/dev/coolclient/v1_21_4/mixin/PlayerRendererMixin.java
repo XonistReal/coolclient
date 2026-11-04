@@ -2,10 +2,12 @@ package dev.coolclient.v1_21_4.mixin;
 
 import dev.coolclient.core.CoolClient;
 import dev.coolclient.core.modules.cpvp.TotemPopCounter;
+import dev.coolclient.core.modules.utility.UtilityModules;
 import dev.coolclient.v1_21_4.CoolPlayerState;
 import dev.coolclient.v1_21_4.CosmeticsLayer;
 import dev.coolclient.v1_21_4.Hooks21;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
@@ -39,6 +41,13 @@ public abstract class PlayerRendererMixin extends LivingEntityRenderer<AbstractC
         float lift = CoolClient.get().cosmetics().nametagLift(player.getUUID());
         if (lift > 0 && state.nameTagAttachment != null) state.nameTagAttachment = state.nameTagAttachment.add(0, lift, 0);
         Component tag = state.nameTag;
+        // Nick Hider: name tags are components, which the plain-string hook in FontMixin never sees.
+        UtilityModules.NickHider nick = CoolClient.get().modules().get(UtilityModules.NickHider.class);
+        if (nick != null && nick.isEnabled()) {
+            String own = Minecraft.getInstance().getUser().getName();
+            String plain = tag.getString();
+            if (plain.contains(own)) tag = Component.literal(nick.apply(plain, own)).withStyle(tag.getStyle());
+        }
         if (CoolClient.get().client().showBadges.on() && CoolClient.get().cosmetics().isClientUser(player.getUUID())) {
             boolean supporter = CoolClient.get().cosmetics().isSupporter(player.getUUID());
             tag = Component.literal("✦ ").withStyle(supporter ? ChatFormatting.GOLD : ChatFormatting.AQUA).append(tag);
