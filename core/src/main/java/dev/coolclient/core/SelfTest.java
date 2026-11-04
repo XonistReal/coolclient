@@ -29,6 +29,7 @@ public final class SelfTest {
     private static Driver driver;
     private static int step;
     private static int frames;
+    private static SelfTestReel reel;
 
     private SelfTest() {}
 
@@ -79,6 +80,11 @@ public final class SelfTest {
                         a.cosmetics().equip(CosmeticCatalog.get("aura_sparkle"));
                         HandChams hc = a.modules().get(HandChams.class);
                         if (hc != null) hc.setEnabled(true);
+                        if (SelfTestReel.enabled()) {
+                            reel = new SelfTestReel(driver);
+                            step = 200;
+                            break;
+                        }
                         shot("01-main-menu");
                         next();
                         a.platform().openScreen(new ModMenuScreen(null));
@@ -242,6 +248,12 @@ public final class SelfTest {
                         a.client().theme.set("Aurora");
                         a.modules().get(Skybox.class).setEnabled(false);
                         a.platform().openScreen(null);
+                    }
+                    break;
+                case 200:
+                    if (reel.frame()) {
+                        step = 16;
+                        frames = 0;
                     }
                     break;
                 case 16:

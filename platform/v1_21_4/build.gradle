@@ -11,6 +11,14 @@ loom {
             programArgs "--username", "CoolDev"
             if (project.hasProperty("selftest")) vmArg "-Dcoolclient.selftest=true"
             if (project.hasProperty("terrain")) vmArg "-Dcoolclient.selftest.terrain=true"
+            // -Preel: record promo clips (frame sequences) instead of single screenshots; -Preel=hud,sky- records only those.
+            if (project.hasProperty("reel")) {
+                vmArg "-Dcoolclient.selftest.reel=true"
+                def only = project.property("reel").toString()
+                if (only && only != "true") vmArg "-Dcoolclient.selftest.reel.only=" + only
+            }
+            // -Plong: cosmetic orbits as slow 8 s full turns (long-look-* clips).
+            if (project.hasProperty("long")) vmArg "-Dcoolclient.selftest.reel.long=true"
             // -Pwindow=1920x1080 for high-resolution screenshots (store pages, videos).
             if (project.hasProperty("window")) {
                 def size = project.property("window").toString().split("x")

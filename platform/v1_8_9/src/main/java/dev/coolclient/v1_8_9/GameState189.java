@@ -208,6 +208,12 @@ final class GameState189 implements GameState {
     public void setSneakHeld(boolean held) { ((KeyBindingAccessor) mc().options.sneakKey).cool$setPressed(held); }
 
     @Override
+    public void setUseHeld(boolean held) { ((KeyBindingAccessor) mc().options.useKey).cool$setPressed(held); }
+
+    @Override
+    public void setAttackHeld(boolean held) { ((KeyBindingAccessor) mc().options.attackKey).cool$setPressed(held); }
+
+    @Override
     public List<UUID> loadedPlayers() {
         if (mc().world == null) return Collections.emptyList();
         List<UUID> out = new ArrayList<UUID>();

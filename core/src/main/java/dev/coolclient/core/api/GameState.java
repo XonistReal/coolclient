@@ -98,6 +98,11 @@ public interface GameState {
 
     void setSneakHeld(boolean held);
 
+    /** Force the use and attack bindings held. Only the promo-footage self-test needs these (1.8.9 block hitting). */
+    default void setUseHeld(boolean held) {}
+
+    default void setAttackHeld(boolean held) {}
+
     /** UUIDs of players currently loaded in the world (for cosmetics lookups). */
     List<UUID> loadedPlayers();
 }

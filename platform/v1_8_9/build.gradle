@@ -11,6 +11,12 @@ loom {
             runDir = "../../run/1.8.9"
             programArgs "--username", "CoolDev"
             if (project.hasProperty("selftest")) vmArg "-Dcoolclient.selftest=true"
+            // -Preel: record promo clips (frame sequences) instead of single screenshots; -Preel=fx18- records only those.
+            if (project.hasProperty("reel")) {
+                vmArg "-Dcoolclient.selftest.reel=true"
+                def only = project.property("reel").toString()
+                if (only && only != "true") vmArg "-Dcoolclient.selftest.reel.only=" + only
+            }
             // -Pwindow=1920x1080 for high-resolution screenshots (store pages, videos).
             if (project.hasProperty("window")) {
                 def size = project.property("window").toString().split("x")
