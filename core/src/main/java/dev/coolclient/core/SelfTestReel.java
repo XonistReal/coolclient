@@ -189,6 +189,7 @@ final class SelfTestReel {
             "cape_ocean", "cape_sakura", "cape_storm", "cape_logo"};
         for (String cape : capes) steps.add(orbit(cape, 1.8, -55, 55, cape));
         steps.add(orbit("cape_founder", 4.0, -70, 70, "cape_founder"));
+        for (String cape : new String[] {"cape_media", "cape_onair", "cape_premiere"}) steps.add(orbit(cape, 4.0, -70, 70, cape));
 
         // Skies from a floating spectator camera; the edit pans across the wide frame.
         steps.add(once(() -> {

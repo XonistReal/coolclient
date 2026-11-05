@@ -1,0 +1,23 @@
+# Cool Client API on Cloudflare Workers (free plan). Setup and deploy: README.md in this folder.
+name = "coolclient-api"
+main = "worker.js"
+compatibility_date = "2025-10-01"
+workers_dev = true
+
+[[durable_objects.bindings]]
+name = "API"
+class_name = "CoolClientApi"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["CoolClientApi"]
+
+# Public settings. Secrets (ADMIN_TOKEN, RELAY_KEY, WEBHOOK_SECRET, TEBEX_SECRET) go in with `wrangler secret put`.
+[vars]
+FOUNDER_LIMIT = "1000"
+ENFORCE_ENTITLEMENTS = "0"
+# Mojang refuses requests from Cloudflare, so its two calls go through the relay in ../relay/ (Netlify).
+MOJANG_RELAY = "https://coolclient-relay.netlify.app/mojang"
+
+[observability]
+enabled = true

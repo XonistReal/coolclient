@@ -1,5 +1,7 @@
 'use strict';
 // Integration test for the Cool Client API in insecure (offline) mode with entitlements enforced: node test.js
+// API_BASE=http://127.0.0.1:8799 node test.js runs the HTTP part against a running server instead (e.g. the
+// Cloudflare worker under `wrangler dev`, started with the same settings as below and empty storage).
 process.env.AURORA_INSECURE = '1';
 process.env.ENFORCE_ENTITLEMENTS = '1';
 process.env.ADMIN_TOKEN = 'test-admin-token';
@@ -12,6 +14,8 @@ process.env.DATA_DIR = require('path').join(require('os').tmpdir(), 'coolclient-
 const assert = require('assert');
 const crypto = require('crypto');
 const { start, sanitizeLoadout } = require('./server');
+const { createApp, changedRecords, dbFromRecords } = require('./app');
+const REMOTE = process.env.API_BASE;
 
 async function call(base, method, path, body, token, headers) {
   const res = await fetch(base + path, {
@@ -47,8 +51,8 @@ function signed(body) {
 }
 
 (async () => {
-  const server = await start(0);
-  const base = `http://127.0.0.1:${server.address().port}`;
+  const server = REMOTE ? null : await start(0);
+  const base = REMOTE ? REMOTE.replace(/\/+$/, '') : `http://127.0.0.1:${server.address().port}`;
   try {
     let r = await call(base, 'GET', '/api/health');
     assert.strictEqual(r.status, 200);
@@ -163,11 +167,92 @@ function signed(body) {
     r = await call(base, 'POST', '/api/webhooks/tebex', tb.raw, null, { 'X-Signature': tb.sig });
     assert.deepStrictEqual(r.body.applied[0].entitlements, ['cape_aurora', 'cape_founder'], 'refund revokes');
 
+    // Media: never sold, given by an admin. It covers everything Supporter+ does plus the Media capes.
+    const creator = '33333333-4444-5555-6666-777777777777';
+    r = await call(base, 'POST', '/api/auth/challenge', { name: 'Creator', uuid: creator });
+    r = await call(base, 'POST', '/api/auth/verify', { name: 'Creator', uuid: creator, serverId: r.body.serverId, offline: true });
+    const creatorToken = r.body.token;
+    await call(base, 'PUT', '/api/me/loadout', { equipped: { CAPE: 'cape_media', WINGS: 'wings_energy' } }, creatorToken);
+    r = await call(base, 'GET', '/api/players/' + creator);
+    assert.deepStrictEqual(r.body.loadout.equipped, {}, 'media cape and store wings hidden before the grant');
+    assert.strictEqual(r.body.media, false);
+    r = await call(base, 'POST', '/api/admin/grant', { username: 'Creator', items: ['media'] }, 'test-admin-token');
+    assert.deepStrictEqual(r.body.entitlements, ['media']);
+    r = await call(base, 'POST', '/api/players', { uuids: [creator] });
+    assert.deepStrictEqual(r.body.players[creator].loadout.equipped, { CAPE: 'cape_media', WINGS: 'wings_energy' });
+    assert.strictEqual(r.body.players[creator].media, true);
+    r = await call(base, 'GET', '/api/me', undefined, creatorToken);
+    assert.strictEqual(r.body.media, true);
+    await call(base, 'PUT', '/api/me/loadout', { equipped: { CAPE: 'cape_onair' } }, friendToken);
+    r = await call(base, 'GET', '/api/players/' + friend);
+    assert.deepStrictEqual(r.body.loadout.equipped, {}, 'Supporter+ does not cover Media capes');
+    tb = tebex(tebexPayment('pay-4', 'payment.completed', 'NewFriend', ['Media', 'cape_media']));
+    r = await call(base, 'POST', '/api/webhooks/tebex', tb.raw, null, { 'X-Signature': tb.sig });
+    assert.deepStrictEqual(r.body.applied, [], 'the store cannot sell Media');
+    r = await call(base, 'GET', '/api/store');
+    assert.ok(!r.body.ranks.includes('media'), 'Media is not a store rank');
+
     assert.deepStrictEqual(sanitizeLoadout(null), { equipped: {}, colors: {}, chroma: {} });
-    console.log('All API tests passed');
+    console.log('HTTP API tests passed' + (REMOTE ? ' against ' + base : ''));
   } finally {
-    server.close();
+    if (server) server.close();
   }
+
+  // In process, enforcement off (the launch setting): everything shows except Founder and Media
+  // cosmetics on people without them. Data goes through the record store the worker uses.
+  const records = new Map();
+  const persist = (db, changed) => {
+    const { puts, deletes } = changedRecords(db, changed);
+    for (const [k, v] of Object.entries(puts)) records.set(k, JSON.parse(JSON.stringify(v)));
+    for (const k of deletes) records.delete(k);
+  };
+  const env = { AURORA_INSECURE: '1', ADMIN_TOKEN: 'a', FOUNDER_LIMIT: '0' };
+  let app = createApp({ env, persist });
+  const local = async (method, url, body, token) =>
+    (await app.handle({ method, url, ip: '10.0.0.1', headers: token ? { authorization: 'Bearer ' + token } : {}, body: body === undefined ? null : JSON.stringify(body) })).body;
+  const yt = '44444444-5555-6666-7777-888888888888';
+  let b = await local('POST', '/api/auth/challenge', { name: 'Tuber', uuid: yt });
+  const ytToken = (await local('POST', '/api/auth/verify', { name: 'Tuber', uuid: yt, serverId: b.serverId, offline: true })).token;
+  await local('PUT', '/api/me/loadout', { equipped: { CAPE: 'cape_premiere', WINGS: 'wings_energy' } }, ytToken);
+  b = await local('GET', '/api/players/' + yt);
+  assert.deepStrictEqual(b.loadout.equipped, { WINGS: 'wings_energy' }, 'unenforced: store wings show, Media cape does not');
+  await local('POST', '/api/admin/grant', { username: 'Tuber', items: ['media'] }, 'a');
+  b = await local('GET', '/api/players/' + yt);
+  assert.deepStrictEqual(b.loadout.equipped, { CAPE: 'cape_premiere', WINGS: 'wings_energy' });
+  assert.ok(records.has('users/' + yt) && records.has('entitlements/' + yt), 'records written');
+
+  // A restart rebuilt from the records keeps the sign-in, the loadout and the rank.
+  app = createApp({ env, persist, db: dbFromRecords(records) });
+  b = await local('GET', '/api/me', undefined, ytToken);
+  assert.deepStrictEqual([b.uuid, b.media, b.entitlements], [yt, true, ['media']]);
+  assert.strictEqual(b.user.loadout.equipped.CAPE, 'cape_premiere');
+
+  // Real sign-ins: Mojang's answer decides. 204 = not joined (401), an outage or block = 502, 200 = signed in.
+  for (const [status, body, expected] of [[204, null, 401], [403, null, 502], [200, { id: '069a79f444e94726a5befca90e38aaf5', name: 'Notch' }, 200]]) {
+    const real = createApp({ env: {}, fetchJson: async () => ({ status, body }) });
+    const ask = async (url, data) => real.handle({ method: 'POST', url, ip: '10.0.0.2', headers: {}, body: JSON.stringify(data) });
+    const ch = (await ask('/api/auth/challenge', { name: 'Notch', uuid: '069a79f4-44e9-4726-a5be-fca90e38aaf5' })).body;
+    const r2 = await ask('/api/auth/verify', { name: 'Notch', serverId: ch.serverId });
+    assert.strictEqual(r2.status, expected, `Mojang ${status} -> ${expected}`);
+  }
+
+  // Through the sign-in relay (Cloudflare): the key goes along, Mojang's answer comes back wrapped.
+  const seen = [];
+  const relayed = createApp({
+    env: { MOJANG_RELAY: 'https://relay.example.test/mojang/', RELAY_KEY: 'k1', ADMIN_TOKEN: 'a' },
+    fetchJson: async (url, headers) => {
+      seen.push([url, headers && headers['X-Relay-Key']]);
+      if (url.includes('kind=profile')) return { status: 200, body: { status: 200, body: { id: 'eeb4bf9812fa4fbcb461ee5d4478e7ce', name: 'KingIceyYT' } } };
+      return { status: 200, body: { status: 200, body: { id: '069a79f444e94726a5befca90e38aaf5', name: 'Notch' } } };
+    },
+  });
+  const rq = async (url, data, token) => relayed.handle({ method: 'POST', url, ip: '10.0.0.3', headers: token ? { authorization: 'Bearer ' + token } : {}, body: JSON.stringify(data) });
+  const ch2 = (await rq('/api/auth/challenge', { name: 'Notch', uuid: '069a79f4-44e9-4726-a5be-fca90e38aaf5' })).body;
+  assert.strictEqual((await rq('/api/auth/verify', { name: 'Notch', serverId: ch2.serverId })).status, 200, 'sign-in through the relay');
+  assert.deepStrictEqual(seen[0], [`https://relay.example.test/mojang?kind=hasJoined&username=Notch&serverId=${ch2.serverId}`, 'k1']);
+  const g = await rq('/api/admin/grant', { username: 'KingIceyYT', items: ['media'] }, 'a');
+  assert.deepStrictEqual(g.body, { uuid: 'eeb4bf98-12fa-4fbc-b461-ee5d4478e7ce', entitlements: ['media'] }, 'name lookup through the relay');
+  console.log('All API tests passed');
 })().catch((e) => {
   console.error('TEST FAILED:', e);
   process.exit(1);

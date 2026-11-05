@@ -74,6 +74,16 @@ public final class ClientSettings extends Module {
     }
 
     @Override
+    public void load(java.util.Map<String, Object> m) {
+        super.load(m);
+        // 0.1.0 and 0.1.1 saved a localhost placeholder as the API server: move those configs to the real one.
+        String url = apiUrl.get().trim();
+        if (url.equals(dev.coolclient.core.CoolClient.LEGACY_API_URL) && !url.equals(dev.coolclient.core.CoolClient.DEFAULT_API_URL)) {
+            apiUrl.set(dev.coolclient.core.CoolClient.DEFAULT_API_URL);
+        }
+    }
+
+    @Override
     public boolean toggleable() { return false; }
 
     @Override

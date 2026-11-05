@@ -14,10 +14,10 @@ cosmetics: **sell what other players see, not what the client can do.**
 
 | Piece | Where |
 |---|---|
-| Unlock tier per cosmetic: Free, Supporter, Store | `core/.../cosmetic/Unlock.java`, `server/catalog.json` |
+| Unlock tier per cosmetic: Free, Supporter, Store, Exclusive, Media | `core/.../cosmetic/Unlock.java`, `server/catalog.json` |
 | Ownership from the server, "Unlock" button and tier chips in the locker | `core/.../cosmetic/Entitlements.java`, `CosmeticsScreen` |
-| Gold nametag badge for supporters (instead of the aqua one) | `PlayerRendererMixin` (1.21.4), `EntityRendererMixin` (1.8.9) |
-| Server: enforcement, store info, admin grants, Tebex webhook, generic signed webhook | `server/server.js` |
+| Gold nametag badge for supporters and a red play badge for Media (instead of the aqua one) | `PlayerRendererMixin` (1.21.4), `EntityRendererMixin` (1.8.9) |
+| Server: enforcement, store info, admin grants, Tebex webhook, generic signed webhook | `server/app.js` (Node: `server.js`, Cloudflare: `worker/`) |
 | Command-line grants for donors, giveaways and creators | `server/admin.js` |
 | Test that the client and server tier lists match | `core/src/test/.../CatalogSyncTest.java` |
 
@@ -27,6 +27,13 @@ edit `Unlock.forRarity` (or give a cosmetic its own tier) and `server/catalog.js
 `./gradlew :core:test` fails if they drift apart.
 
 Nothing changes for players until you turn enforcement on, so the beta keeps "everything is free".
+
+Two tiers are never sold and are checked even with enforcement off:
+
+- **Exclusive**: the Founder cape, given to the first sign-ins (`FOUNDER_LIMIT`).
+- **Media**: for creators. The `media` rank shows the Media capes (Media, On Air, Premiere) and a
+  red play badge, and covers everything Supporter+ does. Grant it by hand with `admin.js`; a store
+  package can't grant it.
 
 ## Server settings
 
@@ -45,7 +52,7 @@ Grant by hand (donors, support tickets, giveaways, creators):
 API_URL=https://api.example.com ADMIN_TOKEN=... node server/admin.js grant Notch supporter
 ```
 
-Items are cosmetic ids from `catalog.json` or the ranks `supporter` and `supporter_plus`. A name
+Items are cosmetic ids from `catalog.json` or the ranks `supporter`, `supporter_plus` and `media`. A name
 resolves through Mojang; if that fails (or in dev mode) the grant waits until the player first signs in.
 
 ## Payment webhooks

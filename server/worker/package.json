@@ -1,0 +1,14 @@
+{
+  "name": "coolclient-api-worker",
+  "version": "0.1.2-beta",
+  "private": true,
+  "license": "GPL-3.0-only",
+  "description": "Runs the Cool Client API on Cloudflare Workers (free plan)",
+  "scripts": {
+    "dev": "wrangler dev --port 8799",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.40.0"
+  }
+}

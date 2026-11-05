@@ -34,8 +34,13 @@ only ever sent to Microsoft and Mojang.
 
 ## The Cool Client server
 
-It stores, per player: name, UUID, equipped cosmetics, what you've bought (cosmetic ids and
-ranks), and when you were last online. Payments are handled entirely by the store provider
+It runs on Cloudflare Workers (`coolclient-api.coolclient-api.workers.dev`). Mojang doesn't
+accept requests from Cloudflare, so the server's sign-in check (your name and a one-time code)
+and name lookups for grants go to Mojang through a small relay on Netlify
+(`coolclient-relay.netlify.app`), which keeps nothing.
+
+It stores, per player: name, UUID, equipped cosmetics, what you've bought or been given (cosmetic
+ids and ranks), and when you were last online. Payments are handled entirely by the store provider
 (Tebex). The server receives a purchase notice from Tebex but only keeps which items were
 granted, not your name, email or payment details.
 
@@ -45,4 +50,4 @@ send a private report through the repository's Security tab.
 ## Verify it yourself
 
 All of this is checkable in the source: network code lives in `core/.../net/ApiClient.java`
-(client), `launcher/.../core/` (launcher) and `server/server.js` (server).
+(client), `launcher/.../core/` (launcher), `server/app.js` (server) and `server/relay/` (relay).

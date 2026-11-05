@@ -1,0 +1,4 @@
+# Cool Client sign-in relay on Netlify (free plan). See README.md in this folder.
+[build]
+  publish = "public"
+  functions = "functions"

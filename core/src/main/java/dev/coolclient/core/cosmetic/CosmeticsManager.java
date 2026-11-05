@@ -31,6 +31,7 @@ public final class CosmeticsManager {
         Loadout loadout;
         boolean clientUser;
         boolean supporter;
+        boolean media;
         long fetched;
     }
 
@@ -64,6 +65,14 @@ public final class CosmeticsManager {
         if (uuid.equals(CoolClient.get().platform().game().selfUuid())) return entitlements.supporter();
         Remote r = remote.get(uuid);
         return r != null && r.supporter;
+    }
+
+    /** Creators with the Media rank get a red play badge. */
+    public boolean isMedia(UUID uuid) {
+        if (uuid == null) return false;
+        if (uuid.equals(CoolClient.get().platform().game().selfUuid())) return entitlements.media();
+        Remote r = remote.get(uuid);
+        return r != null && r.media;
     }
 
     // ------------------------------------------------------------------ local loadout
@@ -259,6 +268,7 @@ public final class CosmeticsManager {
                     Map<String, Object> p = e.getValue() instanceof Map ? (Map<String, Object>) e.getValue() : null;
                     r.clientUser = true;
                     r.supporter = p != null && Boolean.TRUE.equals(p.get("supporter"));
+                    r.media = p != null && Boolean.TRUE.equals(p.get("media"));
                     r.loadout = Loadout.fromJson(Json.obj(p, "loadout"));
                     r.fetched = Time.millis();
                 } catch (IllegalArgumentException ignored) {

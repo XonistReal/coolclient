@@ -221,4 +221,130 @@ public final class CapeStyles {
         float halo = clamp01(1f - (x * x + y * y) / 30f);
         return add(base, accent, halo * 0.18f);
     };
+
+    // ------------------------------------------------------------------ Media capes (creators)
+
+    /** Cape lettering: a small pixel font. Each row holds the glyph's pixels, leftmost in the highest bit. */
+    private static final String GLYPHS = "ADEILMNOR ";
+    private static final int[] GLYPH_WIDTH = {5, 5, 5, 3, 5, 5, 5, 5, 5, 2};
+    private static final int[][] FONT = {
+        {0b01110, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001}, // A
+        {0b11110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b11110}, // D
+        {0b11111, 0b10000, 0b10000, 0b11110, 0b10000, 0b10000, 0b11111}, // E
+        {0b111, 0b010, 0b010, 0b010, 0b010, 0b010, 0b111},               // I
+        {0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b11111}, // L
+        {0b10001, 0b11011, 0b10101, 0b10101, 0b10001, 0b10001, 0b10001}, // M
+        {0b10001, 0b11001, 0b10101, 0b10011, 0b10001, 0b10001, 0b10001}, // N
+        {0b01110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110}, // O
+        {0b11110, 0b10001, 0b10001, 0b11110, 0b10100, 0b10010, 0b10001}, // R
+        {0, 0, 0, 0, 0, 0, 0},                                            // space
+    };
+
+    private static int textWidth(String s) {
+        int w = -1;
+        for (int i = 0; i < s.length(); i++) w += GLYPH_WIDTH[GLYPHS.indexOf(s.charAt(i))] + 1;
+        return w;
+    }
+
+    /**
+     * Whether (u, v) is on a lit pixel of {@code s}, centred across the cape with its top row at
+     * texture row {@code row}. One font pixel is one texture pixel (the face is 40 x 64).
+     */
+    private static boolean lettering(String s, float u, float v, int row) {
+        int y = (int) Math.floor(v * 64f) - row;
+        if (y < 0 || y >= 7) return false;
+        int x = (int) Math.floor(u * 40f) - (40 - textWidth(s)) / 2;
+        for (int i = 0; i < s.length() && x >= 0; i++) {
+            int g = GLYPHS.indexOf(s.charAt(i));
+            int w = GLYPH_WIDTH[g];
+            if (x < w) return ((FONT[g][y] >> (w - 1 - x)) & 1) != 0;
+            x -= w + 1;
+        }
+        return false;
+    }
+
+    /** Signed distance (in cape pixels) to a rounded box centred on the origin; negative inside. */
+    private static float roundBox(float x, float y, float halfW, float halfH, float radius) {
+        float qx = Math.abs(x) - halfW + radius, qy = Math.abs(y) - halfH + radius;
+        float ox = Math.max(qx, 0), oy = Math.max(qy, 0);
+        return (float) Math.sqrt(ox * ox + oy * oy) + Math.min(Math.max(qx, qy), 0) - radius;
+    }
+
+    /** Media: broadcast red, a round white play button with a slow shine, and MEDIA lettering. */
+    public static final CapeStyle MEDIA = (u, v, t, tint) -> {
+        int c = Colors.lerp(0xFFD0142C, 0xFF4A040E, v);
+        c = Colors.lerp(c, 0xFF2A0207, clamp01(Math.abs(u - 0.5f) * 1.4f - 0.3f));
+        float edge = Math.min(Math.min(u, 1 - u) * 10f, Math.min(v, 1 - v) * 16f);
+        float sheen = clamp01(1f - Math.abs(frac(u * 0.6f + v * 0.4f - t * 0.22f) - 0.5f) * 7f);
+        if (edge < 0.5f) return Colors.lerp(0xFFF4C9CE, 0xFFFFFFFF, sheen);
+        float x = (u - 0.5f) * 10f, y = v * 16f - 6.0f;
+        float d = (float) Math.sqrt(x * x + y * y) - 2.8f;
+        if (d < 0) {
+            float tx = x - 0.2f; // centres the triangle's mass in the circle
+            if (tx > -1.1f && Math.abs(y) < 1.3f * (1.5f - tx) / 2.6f) return 0xFFD8142B;
+            float pulse = 0.93f + 0.07f * (float) Math.sin(t * 2.2f);
+            return Colors.brighten(Colors.lerp(0xFFEDEDF2, 0xFFFFFFFF, sheen), pulse);
+        }
+        float glow = clamp01(1f - d / 2.2f);
+        c = add(c, 0xFFFF8A96, glow * glow * 0.35f);
+        if (lettering("MEDIA", u, v, 41)) return 0xFFFFFFFF;
+        if (lettering("MEDIA", u - 1f / 40f, v - 1f / 64f, 41)) return 0xFF3A0309;
+        float bar = clamp01(1f - Math.abs(frac(v * 1.2f - t * 0.3f) - 0.5f) * 14f);
+        return add(c, 0xFFFFFFFF, bar * 0.07f);
+    };
+
+    /** On Air: studio black, a glowing ON AIR sign that flickers now and then, and broadcast rings. */
+    public static final CapeStyle ON_AIR = (u, v, t, tint) -> {
+        int c = Colors.lerp(0xFF17171D, 0xFF060608, v);
+        float cycle = frac(t / 4.3f);
+        float on = cycle > 0.90f && cycle < 0.93f ? 0.35f : 1f;
+        float edge = Math.min(Math.min(u, 1 - u) * 10f, Math.min(v, 1 - v) * 16f);
+        if (edge < 0.4f) return Colors.lerp(0xFF3A060C, 0xFFE0182D, on * 0.8f);
+        float x = (u - 0.5f) * 10f;
+        float d = roundBox(x, v * 16f - 3.125f, 4.4f, 1.45f, 0.6f);
+        if (d < 0) {
+            if (lettering("ON AIR", u, v, 9)) return Colors.lerp(0xFF7A1018, 0xFFFFF2F4, on);
+            return Colors.lerp(0xFF5A0810, 0xFFE41A33, on);
+        }
+        float glow = clamp01(1f - d / 1.8f);
+        c = add(c, 0xFFFF2D4A, glow * glow * 0.5f * on);
+        float dy = v * 16f - 10.5f;
+        float r = (float) Math.sqrt(x * x + dy * dy);
+        if (r < 0.75f) return Colors.brighten(0xFFFF2D4A, 0.85f + 0.15f * (float) Math.sin(t * 4f));
+        float ring = 0;
+        for (int i = 0; i < 3; i++) {
+            float rr = 0.9f + frac(t * 0.45f + i / 3f) * 5.5f;
+            ring += clamp01(1f - Math.abs(r - rr) * 2.6f) * (1f - (rr - 0.9f) / 5.5f);
+        }
+        return add(c, 0xFFFF4A60, ring * 0.9f);
+    };
+
+    /** Premiere: a film strip down the sides, spotlights sweeping a gold-lit stage, a star on top. */
+    public static final CapeStyle PREMIERE = (u, v, t, tint) -> {
+        float x = (u - 0.5f) * 10f, y = v * 16f;
+        float side = Math.min(u, 1 - u) * 10f;
+        if (side < 1.6f) {
+            float hy = frac((y - t * 1.6f) / 2f);
+            boolean hole = side > 0.45f && side < 1.2f && hy > 0.25f && hy < 0.75f;
+            return hole ? 0xFFEDE6D6 : 0xFF0B0A0C;
+        }
+        int c = Colors.lerp(0xFF1B0B33, 0xFF07040E, clamp01(v * 1.1f));
+        c = add(c, 0xFFFFB547, clamp01((v - 0.72f) * 3f) * 0.35f);
+        for (int i = 0; i < 2; i++) {
+            float ox = i == 0 ? -3.4f : 3.4f;
+            float ang = (float) Math.atan2(x - ox, 16.5f - y);
+            float aim = (i == 0 ? 0.35f : -0.35f) + 0.32f * (float) Math.sin(t * 0.9f + i * 2.2f);
+            float beam = clamp01(1f - Math.abs(ang - aim) / 0.16f);
+            float near = clamp01(1f - (16.5f - y) / 17f);
+            c = add(c, i == 0 ? 0xFFFFE9B0 : 0xFFB9A2FF, beam * beam * (0.25f + 0.45f * near));
+        }
+        float sy = y - 4.2f;
+        double a = Math.atan2(x, -sy);
+        double rad = Math.sqrt(x * x + sy * sy);
+        double star = 1.6 * (0.42 + 0.58 * Math.pow(Math.abs(Math.cos(a * 2.5)), 2.5));
+        if (rad < star) return Colors.brighten(0xFFFFC83A, 0.88f + 0.12f * (float) Math.sin(t * 3f));
+        float halo = clamp01(1f - (float) (rad - star) / 2.2f);
+        c = add(c, 0xFFFFC83A, halo * halo * 0.3f);
+        return add(c, 0xFFFFFFFF, stars(u, v, t, 0.025f, 41) * 0.6f);
+    };
 }

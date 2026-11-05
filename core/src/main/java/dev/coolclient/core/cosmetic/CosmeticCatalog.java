@@ -30,6 +30,9 @@ public final class CosmeticCatalog {
         add(new CapeCosmetic("cape_sakura", "Sakura", "Cherry petals on the breeze.", Rarity.RARE, CapeStyles.SAKURA, 0xFFFF7FB0, false, true));
         add(new CapeCosmetic("cape_storm", "Thunderstorm", "Lightning strikes every few seconds.", Rarity.EPIC, CapeStyles.STORM, 0xFF8FB3FF, false, true));
         add(new CapeCosmetic("cape_founder", "Founder", "For the first players. Never sold.", Rarity.MYTHIC, CapeStyles.FOUNDER, 0xFFFFC83A, false, true, Unlock.EXCLUSIVE));
+        add(new CapeCosmetic("cape_media", "Media", "Hit record.", Rarity.MYTHIC, CapeStyles.MEDIA, 0xFFFF2D4A, false, true, Unlock.MEDIA));
+        add(new CapeCosmetic("cape_onair", "On Air", "The sign is always on.", Rarity.MYTHIC, CapeStyles.ON_AIR, 0xFFFF2D4A, false, true, Unlock.MEDIA));
+        add(new CapeCosmetic("cape_premiere", "Premiere", "Opening night, every night.", Rarity.MYTHIC, CapeStyles.PREMIERE, 0xFFFFC83A, false, true, Unlock.MEDIA));
         add(new CapeCosmetic("cape_gradient", "Custom Gradient", "Your colour, with a moving sheen.", Rarity.COMMON, CapeStyles.GRADIENT, 0xFF8A5CFF, true, true));
 
         // Wings

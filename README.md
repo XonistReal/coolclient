@@ -124,7 +124,8 @@ automated screenshot tour, which saves screenshots to `run/<version>/screenshots
 - `platform/v1_8_9`, `platform/v1_21_4`: thin per-version layers (renderer + mixins).
 - `launcher/`: the launcher (Java + LWJGL/OpenGL). It draws its UI with the client's own toolkit
   from `core`, so it looks like the in-game menus, and it bundles both client jars.
-- `server/`: optional cosmetics/presence/entitlements API (zero-dependency Node, `node test.js`).
+- `server/`: the cosmetics/presence/entitlements API (zero dependencies, `node test.js`). Runs on
+  Node or Docker (`server.js`) or on Cloudflare's free Workers plan (`server/worker/`).
 
 See [PLAN.md](PLAN.md) for the full plan and roadmap, and [MONETIZATION.md](MONETIZATION.md) for how
 the cosmetics store works while the code stays open source.

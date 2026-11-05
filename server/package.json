@@ -1,9 +1,9 @@
 {
   "name": "coolclient-api",
-  "version": "0.1.0-beta",
+  "version": "0.1.2-beta",
   "private": true,
   "license": "GPL-3.0-only",
-  "description": "Cool Client cosmetics, entitlements, presence and news API (zero dependencies)",
+  "description": "Cool Client cosmetics, entitlements, presence and news API (zero dependencies; Node or Cloudflare Workers)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -11,6 +11,6 @@
     "test": "node test.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   }
 }

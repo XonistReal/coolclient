@@ -266,11 +266,12 @@ public final class CosmeticsScreen extends UIScreen {
         }
         if (locked) {
             float ly = y + h - (eq ? 24 : 4) - 30;
-            boolean exclusive = focused.unlock == dev.coolclient.core.cosmetic.Unlock.EXCLUSIVE;
-            String note = exclusive ? "Given to the first players. Never sold."
+            dev.coolclient.core.cosmetic.Unlock how = focused.unlock;
+            String note = how == dev.coolclient.core.cosmetic.Unlock.EXCLUSIVE ? "Given to the first players. Never sold."
+                    : how == dev.coolclient.core.cosmetic.Unlock.MEDIA ? "For creators with the Media rank. Never sold."
                     : eq ? "Preview: only you can see it" : "Others see it once unlocked";
             Fonts.small().draw(r, Fonts.small().trim(note, w - 16), x + 8, ly, focused.unlock.color, false);
-            if (!exclusive) {
+            if (how.sold()) {
                 unlock.setLabel(focused.unlock == dev.coolclient.core.cosmetic.Unlock.SUPPORTER ? "Get Supporter" : "Buy in store");
                 unlock.setBounds(x + 8, ly + 11, w - 16, 16);
                 unlock.render(r, mx, my);
@@ -287,7 +288,7 @@ public final class CosmeticsScreen extends UIScreen {
         if (showOwn.mouseClicked(mx, my, button)) return true;
         if (picker != null && picker.mouseClicked(mx, my, button)) return true;
         if (focused != null && CoolClient.get().cosmetics().local().isEquipped(focused) && unequip.mouseClicked(mx, my, button)) return true;
-        if (focused != null && focused.unlock != dev.coolclient.core.cosmetic.Unlock.EXCLUSIVE
+        if (focused != null && focused.unlock.sold()
                 && !CoolClient.get().cosmetics().entitlements().owns(focused) && unlock.mouseClicked(mx, my, button)) return true;
         float y = py + 40;
         for (CosmeticType t : CosmeticType.values()) {

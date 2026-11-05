@@ -29,12 +29,14 @@ import dev.coolclient.core.waypoint.WaypointManager;
  */
 public final class CoolClient {
     public static final String NAME = "Cool Client";
-    public static final String VERSION = "0.1.1-beta";
+    public static final String VERSION = "0.1.2-beta";
     // Set these two before a public release.
     /** Public source repository (shown on the welcome screen). */
     public static final String SOURCE_URL = "https://github.com/XonistReal/coolclient";
     /** The official API server (cosmetics, entitlements). */
-    public static final String DEFAULT_API_URL = "http://localhost:8787";
+    public static final String DEFAULT_API_URL = "https://coolclient-api.coolclient-api.workers.dev";
+    /** The placeholder 0.1.0 and 0.1.1 saved as the API server; such configs move to {@link #DEFAULT_API_URL}. */
+    public static final String LEGACY_API_URL = "http://localhost:8787";
 
     private static CoolClient instance;
 

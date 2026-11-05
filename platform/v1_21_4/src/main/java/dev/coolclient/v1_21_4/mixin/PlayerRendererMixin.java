@@ -49,8 +49,13 @@ public abstract class PlayerRendererMixin extends LivingEntityRenderer<AbstractC
             if (plain.contains(own)) tag = Component.literal(nick.apply(plain, own)).withStyle(tag.getStyle());
         }
         if (CoolClient.get().client().showBadges.on() && CoolClient.get().cosmetics().isClientUser(player.getUUID())) {
-            boolean supporter = CoolClient.get().cosmetics().isSupporter(player.getUUID());
-            tag = Component.literal("✦ ").withStyle(supporter ? ChatFormatting.GOLD : ChatFormatting.AQUA).append(tag);
+            // Media (creators) get a red play badge, supporters a gold star, everyone else the aqua one.
+            if (CoolClient.get().cosmetics().isMedia(player.getUUID())) {
+                tag = Component.literal("▶ ").withStyle(ChatFormatting.RED).append(tag);
+            } else {
+                boolean supporter = CoolClient.get().cosmetics().isSupporter(player.getUUID());
+                tag = Component.literal("✦ ").withStyle(supporter ? ChatFormatting.GOLD : ChatFormatting.AQUA).append(tag);
+            }
         }
         TotemPopCounter pops = CoolClient.get().modules().get(TotemPopCounter.class);
         if (pops != null && pops.showOnNametags()) {

@@ -18,6 +18,8 @@ import java.util.Set;
 public final class Entitlements {
     public static final String SUPPORTER = "supporter";
     public static final String SUPPORTER_PLUS = "supporter_plus";
+    /** Creators' rank: everything Supporter+ covers, plus the Media cosmetics. Never sold. */
+    public static final String MEDIA = "media";
     private static final long REFRESH_MS = 10 * 60_000L;
 
     private final ApiClient api;
@@ -34,15 +36,20 @@ public final class Entitlements {
     public boolean enforced() { return enforced && api.enabled(); }
 
     public boolean owns(Cosmetic c) {
-        // Exclusives are hidden from others even while everything else is free.
+        // Exclusive and Media cosmetics are hidden from others even while everything else is free.
         if (c.unlock == Unlock.EXCLUSIVE) return owned.contains(c.id);
+        if (c.unlock == Unlock.MEDIA) return owned.contains(c.id) || owned.contains(MEDIA);
         if (!enforced() || c.unlock == Unlock.FREE || owned.contains(c.id)) return true;
-        if (owned.contains(SUPPORTER_PLUS)) return true;
+        if (owned.contains(SUPPORTER_PLUS) || owned.contains(MEDIA)) return true;
         return c.unlock == Unlock.SUPPORTER && owned.contains(SUPPORTER);
     }
 
     public boolean supporter() {
         return owned.contains(SUPPORTER) || owned.contains(SUPPORTER_PLUS);
+    }
+
+    public boolean media() {
+        return owned.contains(MEDIA);
     }
 
     /** Store page for this account, or empty when the server has none. */

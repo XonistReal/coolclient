@@ -20,6 +20,8 @@ node_modules/
 launcher/dist/
 launcher/resources/mods/*.jar
 server/data/
+.wrangler/
+.dev.vars
 
 # Release output
 dist/
@@ -30,3 +32,6 @@ Thumbs.db
 
 # Server secrets
 server/.env
+
+# Local Netlify folder
+.netlify
