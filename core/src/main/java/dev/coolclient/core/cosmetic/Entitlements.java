@@ -20,6 +20,8 @@ public final class Entitlements {
     public static final String SUPPORTER_PLUS = "supporter_plus";
     /** Creators' rank: everything Supporter+ covers, plus the Media cosmetics. Never sold. */
     public static final String MEDIA = "media";
+    /** The project owner's rank: everything, plus the Owner cosmetics. */
+    public static final String OWNER = "owner";
     private static final long REFRESH_MS = 10 * 60_000L;
 
     private final ApiClient api;
@@ -27,6 +29,7 @@ public final class Entitlements {
     private volatile boolean enforced;
     private volatile String storeUrl = "";
     private long lastRefresh = -REFRESH_MS;
+    private Runnable onLoaded;
 
     public Entitlements(ApiClient api) {
         this.api = api;
@@ -36,8 +39,9 @@ public final class Entitlements {
     public boolean enforced() { return enforced && api.enabled(); }
 
     public boolean owns(Cosmetic c) {
-        // Exclusive and Media cosmetics are hidden from others even while everything else is free.
-        if (c.unlock == Unlock.EXCLUSIVE) return owned.contains(c.id);
+        if (owned.contains(OWNER)) return true;
+        // Exclusive, Media and Owner cosmetics are hidden from others even while everything else is free.
+        if (c.unlock == Unlock.EXCLUSIVE || c.unlock == Unlock.OWNER) return owned.contains(c.id);
         if (c.unlock == Unlock.MEDIA) return owned.contains(c.id) || owned.contains(MEDIA);
         if (!enforced() || c.unlock == Unlock.FREE || owned.contains(c.id)) return true;
         if (owned.contains(SUPPORTER_PLUS) || owned.contains(MEDIA)) return true;
@@ -50,6 +54,24 @@ public final class Entitlements {
 
     public boolean media() {
         return owned.contains(MEDIA);
+    }
+
+    public boolean owner() {
+        return owned.contains(OWNER);
+    }
+
+    /**
+     * Whether the cosmetics menu lists it: everything that can be had (free, Supporter, store), plus
+     * given cosmetics (Founder, Media, Owner) only for players who have them. Others only ever see
+     * those on someone wearing them.
+     */
+    public boolean listed(Cosmetic c) {
+        return c.unlock.sold() || owns(c);
+    }
+
+    /** Runs on the main thread each time the server's ownership list arrives. */
+    void onLoaded(Runnable r) {
+        this.onLoaded = r;
     }
 
     /** Store page for this account, or empty when the server has none. */
@@ -76,6 +98,7 @@ public final class Entitlements {
             Set<String> s = new HashSet<String>();
             if (list instanceof List) for (Object o : (List<?>) list) if (o instanceof String) s.add((String) o);
             owned = s;
+            if (onLoaded != null) onLoaded.run();
         });
     }
 }

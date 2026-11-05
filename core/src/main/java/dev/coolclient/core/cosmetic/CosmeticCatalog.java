@@ -33,6 +33,7 @@ public final class CosmeticCatalog {
         add(new CapeCosmetic("cape_media", "Media", "Hit record.", Rarity.MYTHIC, CapeStyles.MEDIA, 0xFFFF2D4A, false, true, Unlock.MEDIA));
         add(new CapeCosmetic("cape_onair", "On Air", "The sign is always on.", Rarity.MYTHIC, CapeStyles.ON_AIR, 0xFFFF2D4A, false, true, Unlock.MEDIA));
         add(new CapeCosmetic("cape_premiere", "Premiere", "Opening night, every night.", Rarity.MYTHIC, CapeStyles.PREMIERE, 0xFFFFC83A, false, true, Unlock.MEDIA));
+        add(new CapeCosmetic("cape_owner", "Owner", "Only one of these exists.", Rarity.MYTHIC, CapeStyles.OWNER, 0xFF8A5CFF, false, true, Unlock.OWNER));
         add(new CapeCosmetic("cape_gradient", "Custom Gradient", "Your colour, with a moving sheen.", Rarity.COMMON, CapeStyles.GRADIENT, 0xFF8A5CFF, true, true));
 
         // Wings

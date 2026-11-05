@@ -1,5 +1,5 @@
 {
-  "_comment": "Unlock tier per cosmetic: free, supporter (Supporter rank), store (sold alone, or with Supporter+), exclusive (never sold; granted by the server) or media (never sold; comes with the Media rank for creators). Keep in sync with Unlock in core; CatalogSyncTest checks it.",
+  "_comment": "Unlock tier per cosmetic: free, supporter (Supporter rank), store (sold alone, or with Supporter+), exclusive (never sold; granted by the server), media (never sold; comes with the Media rank for creators) or owner (only the project owner's Owner rank). Keep in sync with Unlock in core; CatalogSyncTest checks it.",
   "cosmetics": {
     "cape_aurora": "store",
     "cape_logo": "supporter",
@@ -17,6 +17,7 @@
     "cape_media": "media",
     "cape_onair": "media",
     "cape_premiere": "media",
+    "cape_owner": "owner",
     "wings_dragon": "supporter",
     "wings_angel": "supporter",
     "wings_demon": "store",

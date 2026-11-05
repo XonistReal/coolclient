@@ -1,6 +1,6 @@
 {
   "name": "coolclient-api-worker",
-  "version": "0.1.2-beta",
+  "version": "0.1.3-beta",
   "private": true,
   "license": "GPL-3.0-only",
   "description": "Runs the Cool Client API on Cloudflare Workers (free plan)",

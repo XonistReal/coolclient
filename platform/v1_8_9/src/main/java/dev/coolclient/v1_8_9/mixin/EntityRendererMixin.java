@@ -38,8 +38,10 @@ public abstract class EntityRendererMixin {
         if (!badge && lift <= 0) return;
         cool$inBadge = true;
         try {
-            // Media (creators) get a red play badge, supporters a gold star, everyone else the aqua one.
-            String star = CoolClient.get().cosmetics().isMedia(entity.getUuid()) ? "§c▶§r "
+            // The owner gets a purple crown, Media (creators) a red play badge, supporters a gold star,
+            // everyone else the aqua one.
+            String star = CoolClient.get().cosmetics().isOwner(entity.getUuid()) ? "§d♚§r "
+                    : CoolClient.get().cosmetics().isMedia(entity.getUuid()) ? "§c▶§r "
                     : CoolClient.get().cosmetics().isSupporter(entity.getUuid()) ? "§6✦§r " : "§b✦§r ";
             renderLabelIfPresent(entity, badge ? star + text : text, x, y + lift, z, maxDistance);
         } finally {

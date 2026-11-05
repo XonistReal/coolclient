@@ -32,16 +32,23 @@
  */
 const CATALOG = require('./catalog.json').cosmetics;
 
-const VERSION = '0.1.2-beta';
+const VERSION = '0.1.3-beta';
 const FOUNDER_ITEM = 'cape_founder';
 const MEDIA = 'media';
+const OWNER = 'owner';
 const ONLINE_WINDOW_MS = 3 * 60 * 1000;
 const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const CHALLENGE_TTL_MS = 2 * 60 * 1000;
 const MAX_BODY = 64 * 1024;
 const SLOTS = ['CAPE', 'WINGS', 'HAT', 'HALO', 'BANDANA', 'AURA'];
-/** Ranks: Supporter and Supporter+ are sold; Media is given to creators (Supporter+ plus the Media cosmetics). */
-const RANKS = ['supporter', 'supporter_plus', MEDIA];
+/**
+ * Ranks: Supporter and Supporter+ are sold; Media is given to creators (Supporter+ plus the Media
+ * cosmetics); Owner is the project owner's (everything, plus the Owner cosmetics).
+ */
+const RANKS = ['supporter', 'supporter_plus', MEDIA, OWNER];
+/** Ranks and cosmetic tiers that are only ever given by an admin, never sold. */
+const GIVEN_RANKS = [MEDIA, OWNER];
+const GIVEN_TIERS = ['exclusive', 'media', 'owner'];
 /** Data that is stored, by collection. Everything else (challenges, presence, rate limits) lives in memory. */
 const COLLECTIONS = ['users', 'tokens', 'entitlements', 'payments', 'pending'];
 
@@ -167,8 +174,8 @@ function tebexItems(products, packages) {
       .replace(/\+/g, ' plus')
       .replace(/[^a-z0-9]+/g, '_')
       .replace(/^_+|_+$/g, '');
-    // Media is never sold, so a store package can't grant it by name.
-    if ((RANKS.includes(key) && key !== MEDIA) || (CATALOG[key] && CATALOG[key] !== 'media')) out.push(key);
+    // Given ranks and cosmetics (Media, Owner, Founder) are never sold, so a store package can't grant them by name.
+    if ((RANKS.includes(key) && !GIVEN_RANKS.includes(key)) || (CATALOG[key] && !GIVEN_TIERS.includes(CATALOG[key]))) out.push(key);
   }
   return out;
 }
@@ -316,32 +323,36 @@ function createApp(opts) {
     return entitlementsOf(uuid).includes(MEDIA);
   }
 
+  function isOwner(uuid) {
+    return entitlementsOf(uuid).includes(OWNER);
+  }
+
   /**
    * Free items, owned items, and whatever the owner's rank includes. Unknown ids are never owned.
-   * Media covers everything Supporter+ does, plus the Media cosmetics; exclusives need their own grant.
+   * Media covers everything Supporter+ does, plus the Media cosmetics; exclusives need their own
+   * grant. The Owner rank covers everything.
    */
   function owns(uuid, id) {
     const tier = CATALOG[id];
     if (!tier) return false;
     if (tier === 'free') return true;
     const items = entitlementsOf(uuid);
-    if (items.includes(id)) return true;
-    if (tier === 'exclusive') return false;
+    if (items.includes(id) || items.includes(OWNER)) return true;
+    if (tier === 'exclusive' || tier === 'owner') return false;
     if (tier === 'media') return items.includes(MEDIA);
     if (items.includes('supporter_plus') || items.includes(MEDIA)) return true;
     return tier === 'supporter' && items.includes('supporter');
   }
 
   /**
-   * What other players get to see. With enforcement on, unowned cosmetics are dropped; exclusives
-   * (Founder) and Media cosmetics are always checked, even while everything else is free.
+   * What other players get to see. With enforcement on, unowned cosmetics are dropped; given ones
+   * (Founder, Media, Owner) are always checked, even while everything else is free.
    */
   function visibleLoadout(uuid, loadout) {
     const l = loadout || sanitizeLoadout(null);
     const out = { equipped: {}, colors: {}, chroma: {} };
     for (const [slot, id] of Object.entries(l.equipped || {})) {
-      const tier = CATALOG[id];
-      if ((ENFORCE || tier === 'exclusive' || tier === 'media') && !owns(uuid, id)) continue;
+      if ((ENFORCE || GIVEN_TIERS.includes(CATALOG[id])) && !owns(uuid, id)) continue;
       out.equipped[slot] = id;
       if (l.colors && l.colors[id]) out.colors[id] = l.colors[id];
       if (l.chroma && l.chroma[id]) out.chroma[id] = true;
@@ -464,7 +475,7 @@ function createApp(opts) {
       });
     }
 
-    if (req.method === 'GET' && p === '/api/store') return ok({ enforced: ENFORCE, url: STORE_URL, ranks: RANKS.filter((r) => r !== MEDIA) });
+    if (req.method === 'GET' && p === '/api/store') return ok({ enforced: ENFORCE, url: STORE_URL, ranks: RANKS.filter((r) => !GIVEN_RANKS.includes(r)) });
 
     if (req.method === 'GET' && p === '/api/news') return ok({ news: db.news || DEFAULT_NEWS });
 
@@ -525,7 +536,7 @@ function createApp(opts) {
     if (req.method === 'GET' && p === '/api/me') {
       const a = auth(req);
       if (!a) return fail(401, 'Not signed in');
-      return ok({ uuid: a.uuid, user: db.users[a.uuid] || null, entitlements: entitlementsOf(a.uuid), supporter: isSupporter(a.uuid), media: isMedia(a.uuid) });
+      return ok({ uuid: a.uuid, user: db.users[a.uuid] || null, entitlements: entitlementsOf(a.uuid), supporter: isSupporter(a.uuid), media: isMedia(a.uuid), owner: isOwner(a.uuid) });
     }
 
     if (req.method === 'PUT' && p === '/api/me/loadout') {
@@ -561,6 +572,7 @@ function createApp(opts) {
           loadout: visibleLoadout(u, user.loadout),
           supporter: isSupporter(u),
           media: isMedia(u),
+          owner: isOwner(u),
           online: now - (online.get(u) || 0) < ONLINE_WINDOW_MS,
         };
       }
@@ -572,7 +584,7 @@ function createApp(opts) {
       const u = normUuid(single[1]);
       const user = db.users[u];
       if (!user) return fail(404, 'Not a Cool Client user');
-      return ok({ uuid: u, name: user.name, loadout: visibleLoadout(u, user.loadout), supporter: isSupporter(u), media: isMedia(u) });
+      return ok({ uuid: u, name: user.name, loadout: visibleLoadout(u, user.loadout), supporter: isSupporter(u), media: isMedia(u), owner: isOwner(u) });
     }
 
     // Admin: grant or revoke cosmetics/ranks by hand (support tickets, giveaways, creators).

@@ -32,6 +32,7 @@ public final class CosmeticsManager {
         boolean clientUser;
         boolean supporter;
         boolean media;
+        boolean owner;
         long fetched;
     }
 
@@ -54,6 +55,22 @@ public final class CosmeticsManager {
         this.file = new File(dir, "cosmetics.json");
         this.api = api;
         this.entitlements = new Entitlements(api);
+        this.entitlements.onLoaded(this::dropUnowned);
+    }
+
+    /** What the cosmetics menu shows for a slot (see {@link Entitlements#listed}). */
+    public List<Cosmetic> available(CosmeticType type) {
+        List<Cosmetic> out = new ArrayList<Cosmetic>();
+        for (Cosmetic c : CosmeticCatalog.ofType(type)) if (entitlements.listed(c)) out.add(c);
+        return out;
+    }
+
+    /** Once the server has said what you own, takes off given cosmetics (Founder, Media, Owner) you don't have. */
+    private void dropUnowned() {
+        for (CosmeticType t : CosmeticType.values()) {
+            Cosmetic c = local.cosmetic(t);
+            if (c != null && !entitlements.listed(c)) unequip(t);
+        }
     }
 
     /** What the signed-in account owns (store unlocks, supporter rank). */
@@ -73,6 +90,14 @@ public final class CosmeticsManager {
         if (uuid.equals(CoolClient.get().platform().game().selfUuid())) return entitlements.media();
         Remote r = remote.get(uuid);
         return r != null && r.media;
+    }
+
+    /** The project owner gets a crown badge. */
+    public boolean isOwner(UUID uuid) {
+        if (uuid == null) return false;
+        if (uuid.equals(CoolClient.get().platform().game().selfUuid())) return entitlements.owner();
+        Remote r = remote.get(uuid);
+        return r != null && r.owner;
     }
 
     // ------------------------------------------------------------------ local loadout
@@ -269,6 +294,7 @@ public final class CosmeticsManager {
                     r.clientUser = true;
                     r.supporter = p != null && Boolean.TRUE.equals(p.get("supporter"));
                     r.media = p != null && Boolean.TRUE.equals(p.get("media"));
+                    r.owner = p != null && Boolean.TRUE.equals(p.get("owner"));
                     r.loadout = Loadout.fromJson(Json.obj(p, "loadout"));
                     r.fetched = Time.millis();
                 } catch (IllegalArgumentException ignored) {

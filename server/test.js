@@ -186,11 +186,24 @@ function signed(body) {
     await call(base, 'PUT', '/api/me/loadout', { equipped: { CAPE: 'cape_onair' } }, friendToken);
     r = await call(base, 'GET', '/api/players/' + friend);
     assert.deepStrictEqual(r.body.loadout.equipped, {}, 'Supporter+ does not cover Media capes');
-    tb = tebex(tebexPayment('pay-4', 'payment.completed', 'NewFriend', ['Media', 'cape_media']));
+    tb = tebex(tebexPayment('pay-4', 'payment.completed', 'NewFriend', ['Media', 'cape_media', 'Owner', 'cape_owner', 'cape_founder']));
     r = await call(base, 'POST', '/api/webhooks/tebex', tb.raw, null, { 'X-Signature': tb.sig });
-    assert.deepStrictEqual(r.body.applied, [], 'the store cannot sell Media');
+    assert.deepStrictEqual(r.body.applied, [], 'the store cannot sell Media, Owner or Founder');
     r = await call(base, 'GET', '/api/store');
-    assert.ok(!r.body.ranks.includes('media'), 'Media is not a store rank');
+    assert.deepStrictEqual(r.body.ranks, ['supporter', 'supporter_plus'], 'only sold ranks are listed');
+
+    // Owner: the Owner cape is only ever shown on the owner, and the Owner rank covers everything.
+    r = await call(base, 'PUT', '/api/me/loadout', { equipped: { CAPE: 'cape_owner' } }, creatorToken);
+    r = await call(base, 'GET', '/api/players/' + creator);
+    assert.deepStrictEqual(r.body.loadout.equipped, {}, 'Media does not cover the Owner cape');
+    await call(base, 'PUT', '/api/me/loadout', { equipped: { CAPE: 'cape_owner', WINGS: 'wings_energy', HALO: 'halo_gold' } }, friendToken);
+    r = await call(base, 'POST', '/api/admin/grant', { uuid: friend, items: ['owner'] }, 'test-admin-token');
+    r = await call(base, 'POST', '/api/players', { uuids: [friend] });
+    assert.deepStrictEqual(r.body.players[friend].loadout.equipped, { CAPE: 'cape_owner', WINGS: 'wings_energy', HALO: 'halo_gold' });
+    assert.strictEqual(r.body.players[friend].owner, true);
+    await call(base, 'PUT', '/api/me/loadout', { equipped: { CAPE: 'cape_founder' } }, friendToken);
+    r = await call(base, 'GET', '/api/players/' + friend);
+    assert.deepStrictEqual([r.body.loadout.equipped, r.body.owner], [{ CAPE: 'cape_founder' }, true], 'Owner covers Founder too');
 
     assert.deepStrictEqual(sanitizeLoadout(null), { equipped: {}, colors: {}, chroma: {} });
     console.log('HTTP API tests passed' + (REMOTE ? ' against ' + base : ''));

@@ -3,7 +3,6 @@ package dev.coolclient.core.gui.screen;
 import dev.coolclient.core.CoolClient;
 import dev.coolclient.core.api.GuiRenderer;
 import dev.coolclient.core.cosmetic.Cosmetic;
-import dev.coolclient.core.cosmetic.CosmeticCatalog;
 import dev.coolclient.core.cosmetic.CosmeticType;
 import dev.coolclient.core.cosmetic.CosmeticsManager;
 import dev.coolclient.core.cosmetic.Loadout;
@@ -62,7 +61,7 @@ public final class CosmeticsScreen extends UIScreen {
         }).icon(Icons.Icon.STAR).primary();
         cm.entitlements().refresh(false);
         Cosmetic eq = cm.local().cosmetic(type);
-        focus(eq != null ? eq : CosmeticCatalog.ofType(type).get(0));
+        focus(eq != null ? eq : cm.available(type).get(0));
     }
 
     private void focus(Cosmetic c) {
@@ -152,7 +151,7 @@ public final class CosmeticsScreen extends UIScreen {
 
     private void drawGrid(GuiRenderer r, float mx, float my) {
         float gx = px + SIDEBAR + 12, gy = py + 12, gw = pw - SIDEBAR - PREVIEW - 30, gh = ph - 24;
-        List<Cosmetic> list = CosmeticCatalog.ofType(type);
+        List<Cosmetic> list = CoolClient.get().cosmetics().available(type);
         int cols = Math.max(2, (int) (gw / 88));
         float gap = 7, cw = (gw - gap * (cols - 1)) / cols, ch = 96;
         int rowsN = (list.size() + cols - 1) / cols;
@@ -269,6 +268,7 @@ public final class CosmeticsScreen extends UIScreen {
             dev.coolclient.core.cosmetic.Unlock how = focused.unlock;
             String note = how == dev.coolclient.core.cosmetic.Unlock.EXCLUSIVE ? "Given to the first players. Never sold."
                     : how == dev.coolclient.core.cosmetic.Unlock.MEDIA ? "For creators with the Media rank. Never sold."
+                    : how == dev.coolclient.core.cosmetic.Unlock.OWNER ? "Only the owner of Cool Client wears this."
                     : eq ? "Preview: only you can see it" : "Others see it once unlocked";
             Fonts.small().draw(r, Fonts.small().trim(note, w - 16), x + 8, ly, focused.unlock.color, false);
             if (how.sold()) {
@@ -298,7 +298,7 @@ public final class CosmeticsScreen extends UIScreen {
                 rememberedType = t;
                 scroll.reset();
                 Cosmetic eq = CoolClient.get().cosmetics().local().cosmetic(t);
-                focus(eq != null ? eq : CosmeticCatalog.ofType(t).get(0));
+                focus(eq != null ? eq : CoolClient.get().cosmetics().available(t).get(0));
                 return true;
             }
             y += 19;
@@ -312,7 +312,7 @@ public final class CosmeticsScreen extends UIScreen {
         if (scroll.mouseClicked(mx, my)) return true;
         if (!scroll.contains(mx, my)) return false;
         float gx = px + SIDEBAR + 12, gy = py + 12, gw = pw - SIDEBAR - PREVIEW - 30;
-        List<Cosmetic> list = CosmeticCatalog.ofType(type);
+        List<Cosmetic> list = CoolClient.get().cosmetics().available(type);
         int cols = Math.max(2, (int) (gw / 88));
         float gap = 7, cw = (gw - gap * (cols - 1)) / cols, ch = 96;
         for (int i = 0; i < list.size(); i++) {

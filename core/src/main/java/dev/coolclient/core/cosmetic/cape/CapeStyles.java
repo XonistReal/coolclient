@@ -225,8 +225,8 @@ public final class CapeStyles {
     // ------------------------------------------------------------------ Media capes (creators)
 
     /** Cape lettering: a small pixel font. Each row holds the glyph's pixels, leftmost in the highest bit. */
-    private static final String GLYPHS = "ADEILMNOR ";
-    private static final int[] GLYPH_WIDTH = {5, 5, 5, 3, 5, 5, 5, 5, 5, 2};
+    private static final String GLYPHS = "ADEILMNORW ";
+    private static final int[] GLYPH_WIDTH = {5, 5, 5, 3, 5, 5, 5, 5, 5, 5, 2};
     private static final int[][] FONT = {
         {0b01110, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001}, // A
         {0b11110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b11110}, // D
@@ -237,6 +237,7 @@ public final class CapeStyles {
         {0b10001, 0b11001, 0b10101, 0b10011, 0b10001, 0b10001, 0b10001}, // N
         {0b01110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110}, // O
         {0b11110, 0b10001, 0b10001, 0b11110, 0b10100, 0b10010, 0b10001}, // R
+        {0b10001, 0b10001, 0b10001, 0b10101, 0b10101, 0b11011, 0b10001}, // W
         {0, 0, 0, 0, 0, 0, 0},                                            // space
     };
 
@@ -346,5 +347,40 @@ public final class CapeStyles {
         float halo = clamp01(1f - (float) (rad - star) / 2.2f);
         c = add(c, 0xFFFFC83A, halo * halo * 0.3f);
         return add(c, 0xFFFFFFFF, stars(u, v, t, 0.025f, 41) * 0.6f);
+    };
+
+    private static final float[] CROWN_TIPS = {-2.6f, 0f, 2.6f};
+    private static final float[] CROWN_JEWELS = {-1.6f, 0f, 1.6f};
+
+    /** Owner: midnight navy, the brand's teal-to-purple light around the edge, a gold crown and OWNER lettering. */
+    public static final CapeStyle OWNER = (u, v, t, tint) -> {
+        int c = Colors.lerp(0xFF0E1426, 0xFF05070D, v);
+        float edge = Math.min(Math.min(u, 1 - u) * 10f, Math.min(v, 1 - v) * 16f);
+        float flow = frac(u * 0.5f + v * 0.5f - t * 0.25f);
+        int brand = Colors.lerp(0xFF2DE2C1, 0xFF8A5CFF, Math.abs(flow - 0.5f) * 2f);
+        if (edge < 0.55f) return brand;
+        c = add(c, brand, clamp01(1f - (edge - 0.55f) / 1.6f) * 0.28f);
+        float x = (u - 0.5f) * 10f, y = v * 16f;
+        float ax = Math.abs(x);
+        float top = 3.7f + Math.min(ax, Math.abs(ax - 2.6f)) * 1.55f;
+        boolean body = ax < 2.9f && y > top && y < 6.9f;
+        boolean band = ax < 3.1f && y >= 6.9f && y < 7.9f;
+        if (body || band) {
+            for (float jx : CROWN_JEWELS) {
+                float dx = x - jx, dy = y - 7.4f;
+                if (dx * dx + dy * dy < 0.17f) return jx == 0 ? 0xFF2DE2C1 : 0xFF8A5CFF;
+            }
+            float sheen = clamp01(1f - Math.abs(frac(x * 0.08f + y * 0.05f - t * 0.3f) - 0.5f) * 8f);
+            return Colors.lerp(0xFFC9901E, 0xFFFFE27A, clamp01((7.9f - y) / 4.2f * 0.6f + sheen * 0.5f));
+        }
+        for (float jx : CROWN_TIPS) {
+            float dx = x - jx, dy = y - 3.45f;
+            if (dx * dx + dy * dy < 0.22f) return Colors.brighten(0xFFFFE27A, 0.9f + 0.1f * (float) Math.sin(t * 3f + jx));
+        }
+        float gx = x / 4.5f, gy = (y - 5.8f) / 4f;
+        c = add(c, 0xFFFFC83A, clamp01(1f - (gx * gx + gy * gy)) * 0.18f);
+        if (lettering("OWNER", u, v, 41)) return 0xFFFFFFFF;
+        if (lettering("OWNER", u - 1f / 40f, v - 1f / 64f, 41)) return 0xFF05070D;
+        return add(c, 0xFFFFFFFF, stars(u, v, t, 0.03f, 13) * 0.7f);
     };
 }

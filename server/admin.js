@@ -7,8 +7,9 @@
  *   node admin.js revoke Notch cape_aurora
  *   node admin.js grant 069a79f4-44e9-4726-a5be-fca90e38aaf5 supporter_plus
  *
- * The player is a Minecraft name or UUID; items are ranks (supporter, supporter_plus, media) or
- * cosmetic ids from catalog.json. media is for creators: Supporter+ plus the Media capes, never sold.
+ * The player is a Minecraft name or UUID; items are ranks (supporter, supporter_plus, media, owner)
+ * or cosmetic ids from catalog.json. media is for creators: Supporter+ plus the Media capes; owner is
+ * the project owner's (everything, plus the Owner cape). Neither is ever sold.
  * A name that has never signed in is resolved through Mojang, or held until
  * that player first signs in.
  */

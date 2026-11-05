@@ -14,7 +14,9 @@ public enum Unlock {
     /** Never sold: granted by the server (the Founder cape goes to the first players). */
     EXCLUSIVE("Exclusive", 0xFFFFD34D),
     /** Never sold: comes with the Media rank, which the team gives to creators. */
-    MEDIA("Media", 0xFFFF3B4E);
+    MEDIA("Media", 0xFFFF3B4E),
+    /** Never sold: only the project owner's Owner rank shows these. */
+    OWNER("Owner", 0xFFC9A2FF);
 
     public final String displayName;
     public final int color;
@@ -24,9 +26,9 @@ public enum Unlock {
         this.color = color;
     }
 
-    /** Whether there's a store page for it (exclusive and Media cosmetics are only ever given). */
+    /** Whether there's a store page for it (exclusive, Media and Owner cosmetics are only ever given). */
     public boolean sold() {
-        return this != EXCLUSIVE && this != MEDIA;
+        return this != EXCLUSIVE && this != MEDIA && this != OWNER;
     }
 
     /** Default tier: common and rare are free, epic and legendary come with Supporter, mythic is sold. */
