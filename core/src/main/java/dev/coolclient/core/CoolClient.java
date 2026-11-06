@@ -29,7 +29,7 @@ import dev.coolclient.core.waypoint.WaypointManager;
  */
 public final class CoolClient {
     public static final String NAME = "Cool Client";
-    public static final String VERSION = "0.1.5-beta";
+    public static final String VERSION = "0.1.6-beta";
     // Set these two before a public release.
     /** Public source repository (shown on the welcome screen). */
     public static final String SOURCE_URL = "https://github.com/XonistReal/coolclient";

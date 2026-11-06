@@ -183,6 +183,7 @@ final class SelfTestReel {
             {"hat_witch", "aura_flame"},
             {"hat_catears", "bandana_aurora", "aura_snow"},
             {"halo_crimson", "bandana_black", "cape_void"},
+            {"hat_tophat", "bandana_red", "aura_sparkle"},
         };
         for (String[] look : looks) steps.add(orbit("look-" + look[0], 2.4, 125, 235, look));
         String[] capes = {"cape_galaxy", "cape_inferno", "cape_rainbow", "cape_synthwave", "cape_matrix",

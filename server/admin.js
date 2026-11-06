@@ -7,6 +7,8 @@
  *   node admin.js revoke Notch cape_aurora
  *   node admin.js grant 069a79f4-44e9-4726-a5be-fca90e38aaf5 supporter_plus
  *   node admin.js grant Notch thanksgiving
+ *   node admin.js grant Notch booster        (Discord boosters: the Booster cape + the current seasonal drop)
+ *   node admin.js revoke Notch booster       (when the boost ends: takes back only the Booster cape)
  *
  * The player is a Minecraft name or UUID; items are ranks (supporter, supporter_plus, media, owner),
  * cosmetic ids from catalog.json, or a season's name from catalog.json ("thanksgiving") for that
@@ -33,7 +35,7 @@ fetch(`${api}/api/admin/${action}`, {
   .then(async (res) => {
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-    if (body.ignored) console.warn(`Skipped (not a rank, cosmetic or season): ${body.ignored.join(', ')}`);
+    if (body.ignored) console.warn(`Skipped (not a rank, cosmetic, season or bundle): ${body.ignored.join(', ')}`);
     if (body.pending) console.log(`${player} hasn't signed in yet; it applies on their first sign-in.`);
     else console.log(`${body.uuid}: ${body.entitlements.join(', ') || '(nothing)'}`);
   })

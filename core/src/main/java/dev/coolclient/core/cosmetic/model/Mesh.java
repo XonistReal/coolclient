@@ -64,6 +64,31 @@ public final class Mesh {
         }
     }
 
+    /** A round rod from a (radius ra) to b (radius rb), shaded around its side; tapers to a point when rb is 0. */
+    public static void cone(ModelRenderer mr, float ax, float ay, float az, float ra, float bx, float by, float bz, float rb,
+                            int sides, int ca, int cb) {
+        float dx = bx - ax, dy = by - ay, dz = bz - az;
+        float l = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (l < 1e-5f) return;
+        dx /= l; dy /= l; dz /= l;
+        // Two directions across the rod.
+        float hx = Math.abs(dy) < 0.9f ? 0 : 1, hy = Math.abs(dy) < 0.9f ? 1 : 0;
+        float ux = dy * 0 - dz * hy, uy = dz * hx - dx * 0, uz = dx * hy - dy * hx;
+        float ul = (float) Math.sqrt(ux * ux + uy * uy + uz * uz);
+        ux /= ul; uy /= ul; uz /= ul;
+        float vx = dy * uz - dz * uy, vy = dz * ux - dx * uz, vz = dx * uy - dy * ux;
+        for (int i = 0; i < sides; i++) {
+            double a0 = Math.PI * 2 * i / sides, a1 = Math.PI * 2 * (i + 1) / sides;
+            float c0 = (float) Math.cos(a0), s0 = (float) Math.sin(a0), c1 = (float) Math.cos(a1), s1 = (float) Math.sin(a1);
+            float p0x = ux * c0 + vx * s0, p0y = uy * c0 + vy * s0, p0z = uz * c0 + vz * s0;
+            float p1x = ux * c1 + vx * s1, p1y = uy * c1 + vy * s1, p1z = uz * c1 + vz * s1;
+            float k = 0.78f + 0.22f * (float) Math.cos((a0 + a1) / 2);
+            int sa = shade(ca, k), sb = shade(cb, k);
+            quad(mr, ax + p0x * ra, ay + p0y * ra, az + p0z * ra, bx + p0x * rb, by + p0y * rb, bz + p0z * rb,
+                    bx + p1x * rb, by + p1y * rb, bz + p1z * rb, ax + p1x * ra, ay + p1y * ra, az + p1z * ra, sa, sb, sb, sa);
+        }
+    }
+
     /** Torus around the Y axis. */
     public static void torus(ModelRenderer mr, float radius, float tube, int segments, int sides, int c) {
         for (int i = 0; i < segments; i++) {

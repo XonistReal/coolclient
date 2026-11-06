@@ -240,11 +240,12 @@ public final class CosmeticsScreen extends UIScreen {
         f.time = t;
         boolean head = c.type == CosmeticType.HAT || c.type == CosmeticType.HALO || c.type == CosmeticType.BANDANA;
         f.showBody = !head;
-        float top = head ? -8 - Math.max(2.5f, c.headroom()) : -9, bottom = head ? 1 : 25;
-        float span = head ? 15 : c.type == CosmeticType.WINGS ? 36 : 30;
+        boolean wings = c.type == CosmeticType.WINGS;
+        float top = head ? -8 - Math.max(2.5f, c.headroom()) : wings ? -17 : -9, bottom = head ? 1 : wings ? 21 : 25;
+        float span = head ? 15 : wings ? 50 : 30;
         float base = c.type == CosmeticType.WINGS ? 155 : c.type == CosmeticType.BANDANA ? -40 : -28;
         float yaw = base + (float) Math.sin(t * 0.7f + (c.id.hashCode() & 63)) * 18f;
-        float s = Math.min(50f / (bottom - top), 64f / span);
+        float s = Math.min(50f / (bottom - top), (wings ? 56f : 64f) / span);
         final float mid = (top + bottom) / 2f;
         r.drawModel(cx, cy, s, yaw, head ? 14 : 6, mr -> {
             mr.translate(0, -mid, 0);

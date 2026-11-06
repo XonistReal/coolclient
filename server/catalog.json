@@ -33,6 +33,23 @@
       "model": "models/pumpkin_hat.json",
       "texture": "models/pumpkin_hat.png",
       "sway": 3
+    },
+    "cape_booster": {
+      "type": "CAPE",
+      "name": "Booster",
+      "description": "For everyone who boosts the Cool Client Discord.",
+      "rarity": "MYTHIC",
+      "color": "#FF73FA",
+      "image": "capes/booster.png",
+      "frames": 16,
+      "fps": 10
+    }
+  },
+  "bundles": {
+    "booster": {
+      "about": "Discord server boosters: the Booster cape, plus every cosmetic of the seasonal drops on when it's granted. Revoking takes back only the cape.",
+      "items": ["cape_booster"],
+      "currentSeason": true
     }
   },
   "cosmetics": {
@@ -81,6 +98,7 @@
     "aura_orbit": "supporter",
     "aura_leaves": "free",
     "cape_flannel": "free",
-    "hat_pumpkin": "free"
+    "hat_pumpkin": "free",
+    "cape_booster": "exclusive"
   }
 }

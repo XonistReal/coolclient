@@ -280,13 +280,30 @@ function signed(body) {
   await signIn('NeverSignedIn', ns);
   assert.strictEqual((await sl('GET', '/api/me', undefined, await signIn('NeverSignedIn', ns))).entitlements.length, 8, 'applied on first sign-in');
 
+  // Booster bundle: the Booster cape plus whatever seasonal drop is on; revoking takes back only the cape.
+  when = Date.UTC(2026, 10, 20);
+  const boost = '55555555-0000-0000-0000-000000000005', other = '55555555-0000-0000-0000-000000000006';
+  await signIn('Booster', boost);
+  const otherToken = await signIn('NoBoost', other);
+  b = await sl('POST', '/api/admin/grant', { uuid: boost, items: ['booster'] }, 'a');
+  assert.ok(b.entitlements.includes('cape_booster') && b.entitlements.includes('hat_turkey') && b.entitlements.length === 9, JSON.stringify(b));
+  assert.strictEqual(b.ignored, undefined, 'booster is a known bundle');
+  await sl('PUT', '/api/me/loadout', { equipped: { CAPE: 'cape_booster' } }, otherToken);
+  assert.deepStrictEqual((await sl('GET', '/api/players/' + other)).loadout.equipped, {}, 'Booster cape is given, never just worn');
+  b = await sl('POST', '/api/admin/revoke', { uuid: boost, items: ['booster'] }, 'a');
+  assert.ok(!b.entitlements.includes('cape_booster') && b.entitlements.length === 8, 'revoke keeps the seasonal drop');
+  when = Date.UTC(2026, 11, 3);
+  b = await sl('POST', '/api/admin/grant', { uuid: other, items: ['booster'] }, 'a');
+  assert.deepStrictEqual(b.entitlements, ['cape_booster'], 'no drop on in December: just the cape');
+
   when = Date.UTC(2027, 10, 1); // back next November
   b = await sl('PUT', '/api/me/loadout', { equipped: { CAPE: 'cape_harvestmoon' } }, earlyToken);
   assert.deepStrictEqual(b.claimed, ['cape_harvestmoon'], 'next year: back again');
 
   // Server-delivered cosmetics: definitions from /api/catalog, files from /cosmetics/.
   const cat = await sl('GET', '/api/catalog');
-  assert.deepStrictEqual(cat.cosmetics.map((c) => c.id).sort(), ['cape_flannel', 'hat_pumpkin']);
+  assert.deepStrictEqual(cat.cosmetics.map((c) => c.id).sort(), ['cape_booster', 'cape_flannel', 'hat_pumpkin']);
+  assert.strictEqual(cat.cosmetics.find((c) => c.id === 'cape_booster').unlock, 'exclusive');
   const flannel = cat.cosmetics.find((c) => c.id === 'cape_flannel');
   assert.strictEqual(flannel.unlock, 'free');
   assert.strictEqual(flannel.image, 'capes/flannel.png');

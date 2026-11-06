@@ -46,8 +46,10 @@ const SEASONS = CATALOG_FILE.seasons || {};
 const SEASONAL = CATALOG_FILE.seasonal || {};
 /** Cosmetics the server delivers (definitions; their files are in public/cosmetics/). */
 const REMOTE = CATALOG_FILE.remote || {};
+/** Named sets for admin grants ("booster"): their items, and optionally the seasonal drops on right now. */
+const BUNDLES = CATALOG_FILE.bundles || {};
 
-const VERSION = '0.1.5-beta';
+const VERSION = '0.1.6-beta';
 const FOUNDER_ITEM = 'cape_founder';
 const MEDIA = 'media';
 const OWNER = 'owner';
@@ -166,12 +168,23 @@ function inSeason(id, ms) {
   return from <= to ? day >= from && day <= to : day >= from || day <= to;
 }
 
-/** Season names in a grant ("thanksgiving") stand for every cosmetic of that season (a bundle). */
-function expandBundles(items) {
+/**
+ * Bundles in a grant: a season's name ("thanksgiving") stands for every cosmetic of that season;
+ * a name from catalog.json "bundles" ("booster") for its items plus, when granting with
+ * currentSeason, every cosmetic of the seasons on at `now` (revoking leaves those alone).
+ */
+function expandBundles(items, grant, now) {
   const out = [];
   for (const i of Array.isArray(items) ? items : []) {
-    if (typeof i === 'string' && SEASONS[i]) out.push(...Object.keys(SEASONAL).filter((id) => SEASONAL[id] === i));
-    else out.push(i);
+    if (typeof i === 'string' && SEASONS[i]) {
+      out.push(...Object.keys(SEASONAL).filter((id) => SEASONAL[id] === i));
+    } else if (typeof i === 'string' && BUNDLES[i]) {
+      const b = BUNDLES[i];
+      out.push(...(Array.isArray(b.items) ? b.items : []));
+      if (grant && b.currentSeason) out.push(...Object.keys(SEASONAL).filter((id) => inSeason(id, now)));
+    } else {
+      out.push(i);
+    }
   }
   return out;
 }
@@ -404,7 +417,7 @@ function createApp(opts) {
 
   /** Adds or removes items/ranks and returns the new list. Only catalog ids, ranks and season bundles are accepted. */
   function changeEntitlements(uuid, items, grant) {
-    const valid = expandBundles(items).filter((i) => typeof i === 'string' && (RANKS.includes(i) || CATALOG[i]));
+    const valid = expandBundles(items, grant, clock()).filter((i) => typeof i === 'string' && (RANKS.includes(i) || CATALOG[i]));
     const current = new Set(entitlementsOf(uuid));
     for (const i of valid) {
       if (grant) current.add(i);
@@ -653,7 +666,7 @@ function createApp(opts) {
       const result = await applyPurchase(body, body.items, admin[1] === 'grant');
       if (!result) return fail(400, 'Give a uuid or a valid Minecraft username');
       // Unknown names are skipped; say which, so a typo doesn't go unnoticed.
-      const ignored = (Array.isArray(body.items) ? body.items : []).filter((i) => !(RANKS.includes(i) || CATALOG[i] || SEASONS[i]));
+      const ignored = (Array.isArray(body.items) ? body.items : []).filter((i) => !(RANKS.includes(i) || CATALOG[i] || SEASONS[i] || BUNDLES[i]));
       return ok(ignored.length ? Object.assign(result, { ignored }) : result);
     }
 
