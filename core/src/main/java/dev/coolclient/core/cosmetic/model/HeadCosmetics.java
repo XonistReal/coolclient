@@ -5,6 +5,7 @@ import dev.coolclient.core.cosmetic.Cosmetic;
 import dev.coolclient.core.cosmetic.CosmeticContext;
 import dev.coolclient.core.cosmetic.CosmeticType;
 import dev.coolclient.core.cosmetic.Rarity;
+import dev.coolclient.core.cosmetic.Unlock;
 import dev.coolclient.core.render.Colors;
 
 /** Head-attached cosmetics. Head space: x -4..4, y -8..0 (top at -8), z -4..4, face at -z. */
@@ -14,6 +15,8 @@ public final class HeadCosmetics {
     private static float top(CosmeticContext ctx) {
         return ctx.wearingHelmet ? -9.2f : -8f;
     }
+
+    private static float frac(float v) { return v - (float) Math.floor(v); }
 
     public static final class Halo extends Cosmetic {
         public Halo(String id, String name, Rarity rarity, int color) {
@@ -187,6 +190,109 @@ public final class HeadCosmetics {
                 }
             }
             mr.end();
+        }
+    }
+
+    /** Thanksgiving: a tall buckled hat with a wide brim. */
+    public static final class PilgrimHat extends Cosmetic {
+        public PilgrimHat(String id, String name, Rarity rarity, int color) {
+            super(id, name, "Buckle up, dinner's ready.", CosmeticType.HAT, rarity, color, true, false, Unlock.FREE);
+        }
+
+        @Override
+        public float headroom() { return 8f; }
+
+        @Override
+        public void render(ModelRenderer mr, CosmeticContext ctx, int color) {
+            float y = top(ctx);
+            int n = 20;
+            int band = Mesh.shade(color, 0.45f);
+            mr.begin(ctx.white, false);
+            // Brim
+            Mesh.ring(mr, y - 0.5f, 0, 7.2f, n, color);
+            Mesh.ring(mr, y, 0, 7.2f, n, Mesh.shade(color, 0.6f));
+            Mesh.tube(mr, y, 7.2f, y - 0.5f, 7.2f, n, Mesh.shade(color, 0.8f), Mesh.shade(color, 0.8f));
+            // Crown, a little narrower at the top, and its band
+            Mesh.tube(mr, y - 0.5f, 4.3f, y - 7.4f, 3.7f, n, color, Mesh.shade(color, 1.15f));
+            Mesh.ring(mr, y - 7.4f, 0, 3.7f, n, Mesh.shade(color, 1.2f));
+            Mesh.tube(mr, y - 0.5f, 4.45f, y - 2.3f, 4.3f, n, band, band);
+            // Gold buckle on the front (-z)
+            int gold = 0xFFF2C94C;
+            float cy = y - 1.4f, ow = 1.3f, oh = 1.05f, bar = 0.4f, z1 = -4.75f, z2 = -4.35f;
+            Mesh.box(mr, -ow, cy - oh, z1, ow, cy - oh + bar, z2, gold);
+            Mesh.box(mr, -ow, cy + oh - bar, z1, ow, cy + oh, z2, gold);
+            Mesh.box(mr, -ow, cy - oh, z1, -ow + bar, cy + oh, z2, gold);
+            Mesh.box(mr, ow - bar, cy - oh, z1, ow, cy + oh, z2, gold);
+            mr.end();
+        }
+    }
+
+    /** Thanksgiving: a little turkey sitting on your head. It gobbles every few seconds. */
+    public static final class TurkeyHat extends Cosmetic {
+        private static final int[] FEATHERS = {0xFFB8321F, 0xFFE0731F, 0xFFF2B33A, 0xFF9A5426};
+
+        public TurkeyHat(String id, String name, Rarity rarity, int color) {
+            super(id, name, "Gobble gobble.", CosmeticType.HAT, rarity, color, true, true, Unlock.FREE);
+        }
+
+        @Override
+        public float headroom() { return 9.6f; }
+
+        @Override
+        public void render(ModelRenderer mr, CosmeticContext ctx, int color) {
+            float t = ctx.seconds();
+            float y = top(ctx);
+            float ph = frac(t / 5f);
+            float gobble = ph < 0.3f ? (float) Math.sin(ph / 0.3f * Math.PI * 4) * 0.35f : 0f;
+            float idle = (float) Math.sin(t * 1.8f) * 0.12f;
+            mr.begin(ctx.white, false);
+            // Tail fan behind the body (+z), standing up.
+            int n = 9;
+            float sway = (float) Math.sin(t * 1.3f) * 4f;
+            for (int i = 0; i < n; i++) {
+                double a = Math.toRadians(-78 + 156.0 * i / (n - 1) + sway);
+                float len = 6.9f - Math.abs(i - (n - 1) / 2f) * 0.35f;
+                feather(mr, 0, y - 2.2f, 2.7f, (float) a, len, FEATHERS[Math.abs(i - (n - 1) / 2) % FEATHERS.length]);
+            }
+            // Body and wings
+            Mesh.ellipsoid(mr, 0, y - 2.5f, 0.5f, 3.4f, 2.5f, 3.6f, 14, 8, color);
+            for (int s = -1; s <= 1; s += 2) {
+                Mesh.ellipsoid(mr, s * 3.1f, y - 2.6f, 0.9f, 0.9f, 1.7f, 2.6f, 10, 6, Mesh.shade(color, 0.8f));
+            }
+            // Neck and head, with beak, wattle and eyes; the head faces forward (-z).
+            int skin = 0xFFC98B55;
+            Mesh.ellipsoid(mr, 0, y - 4.6f + idle * 0.5f, -2.3f, 1.0f, 1.8f, 1.0f, 8, 6, skin);
+            float hy = y - 6.6f + gobble + idle, hz = -2.8f;
+            Mesh.ellipsoid(mr, 0, hy, hz, 1.25f, 1.2f, 1.3f, 10, 6, skin);
+            Mesh.box(mr, -0.35f, hy - 0.15f, hz - 1.95f, 0.35f, hy + 0.4f, hz - 1.15f, 0xFFF5A623);
+            float swing = (float) Math.sin(t * 3f) * 0.12f + gobble * 0.4f;
+            Mesh.ellipsoid(mr, 0.3f + swing, hy + 1.05f, hz - 1.3f, 0.32f, 0.85f, 0.32f, 6, 5, 0xFFD7192A);
+            for (int s = -1; s <= 1; s += 2) {
+                Mesh.box(mr, s * 0.62f - 0.2f, hy - 0.6f, hz - 1.1f, s * 0.62f + 0.2f, hy - 0.2f, hz - 0.9f, 0xFF111111);
+            }
+            mr.end();
+        }
+
+        /** One flat tail feather from (x, y, z), fanned out by angle a (0 = straight up), leaning back. */
+        private static void feather(ModelRenderer mr, float x, float y, float z, float a, float len, int col) {
+            float dx = (float) Math.sin(a), dy = -(float) Math.cos(a), dz = 0.35f;
+            float wx = (float) Math.cos(a), wy = (float) Math.sin(a);
+            float[] at = {0f, 0.72f, 0.84f, 1f};
+            float[] half = {0.3f, 1.05f, 1.12f, 1.0f};
+            int[] cols = {Mesh.shade(col, 0.6f), col, 0xFF3A1E10, 0xFFF3E3C3};
+            for (int k = 0; k < 3; k++) {
+                float l0 = at[k] * len, l1 = at[k + 1] * len;
+                float ax = x + dx * l0, ay = y + dy * l0, az = z + dz * l0;
+                float bx = x + dx * l1, by = y + dy * l1, bz = z + dz * l1;
+                // The base fades into the feather's colour, then a dark band and a cream tip.
+                int c0 = k == 0 ? cols[0] : cols[k + 1], c1 = k == 0 ? cols[1] : cols[k + 1];
+                Mesh.quad(mr, ax - wx * half[k], ay - wy * half[k], az, bx - wx * half[k + 1], by - wy * half[k + 1], bz,
+                        bx + wx * half[k + 1], by + wy * half[k + 1], bz, ax + wx * half[k], ay + wy * half[k], az, c0, c1, c1, c0);
+            }
+            // Rounded tip
+            float ex = x + dx * (len + 0.6f), ey = y + dy * (len + 0.6f), ez = z + dz * (len + 0.6f);
+            Mesh.tri(mr, x + dx * len - wx, y + dy * len - wy, z + dz * len, ex, ey, ez, x + dx * len + wx, y + dy * len + wy, z + dz * len,
+                    cols[3], cols[3], cols[3]);
         }
     }
 

@@ -144,7 +144,13 @@ public final class CosmeticsManager {
     /** Uploads the local loadout if signed in. */
     public void pushLoadout() {
         if (!api.authenticated()) return;
-        api.async("PUT", "/api/me/loadout", local.toJson(), true, null);
+        // Wearing a seasonal cosmetic during its season keeps it; re-read what we own once the server has it.
+        boolean claims = false;
+        for (CosmeticType t : CosmeticType.values()) {
+            Cosmetic c = local.cosmetic(t);
+            if (c != null && c.season() != null && c.season().active() && !entitlements.owns(c)) claims = true;
+        }
+        api.async("PUT", "/api/me/loadout", local.toJson(), true, claims ? res -> entitlements.refresh(true) : null);
     }
 
     // ------------------------------------------------------------------ queries

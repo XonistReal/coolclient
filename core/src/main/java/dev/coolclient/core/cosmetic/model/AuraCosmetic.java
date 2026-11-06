@@ -5,17 +5,25 @@ import dev.coolclient.core.cosmetic.Cosmetic;
 import dev.coolclient.core.cosmetic.CosmeticContext;
 import dev.coolclient.core.cosmetic.CosmeticType;
 import dev.coolclient.core.cosmetic.Rarity;
+import dev.coolclient.core.cosmetic.Unlock;
 import dev.coolclient.core.render.Colors;
 import dev.coolclient.core.util.Noise;
 
 /** Glowing particles that orbit or drift around the body. Body space: y 0 (neck) .. 24 (feet). */
 public final class AuraCosmetic extends Cosmetic {
-    public enum Style { SPARKLE, FLAME, SNOW, HEARTS, ORBIT }
+    public enum Style { SPARKLE, FLAME, SNOW, HEARTS, ORBIT, LEAVES }
+
+    private static final int[] LEAF_COLORS = {0xFFE8471C, 0xFFF29A1F, 0xFFF7C843, 0xFFB5301A, 0xFFD9661C};
 
     private final Style style;
 
     public AuraCosmetic(String id, String name, String description, Rarity rarity, Style style, int color) {
-        super(id, name, description, CosmeticType.AURA, rarity, color, style != Style.FLAME && style != Style.SNOW, true);
+        this(id, name, description, rarity, style, color, Unlock.forRarity(rarity));
+    }
+
+    public AuraCosmetic(String id, String name, String description, Rarity rarity, Style style, int color, Unlock unlock) {
+        super(id, name, description, CosmeticType.AURA, rarity, color,
+                style != Style.FLAME && style != Style.SNOW && style != Style.LEAVES, true, unlock);
         this.style = style;
     }
 
@@ -53,6 +61,17 @@ public final class AuraCosmetic extends Cosmetic {
                     c = 0xFFF2F8FF;
                     break;
                 }
+                case LEAVES: {
+                    float life = frac(t * (0.11f + h1 * 0.08f) + h2);
+                    float a = (float) (h3 * Math.PI * 2 + t * 0.25);
+                    float r = 7f + h2 * 5f;
+                    float lx = (float) Math.cos(a) * r + (float) Math.sin(t * 1.7f + i) * 1.2f;
+                    float lz = (float) Math.sin(a) * r;
+                    float fade = Math.min(1f, Math.min(life * 6f, (1f - life) * 4f));
+                    int lc = LEAF_COLORS[(int) (h3 * 97) % LEAF_COLORS.length];
+                    leaf(mr, lx, -9f + life * 33f, lz, 1.0f + h1 * 0.5f, t * (1.5f + h1 * 2f) + i * 2f, Mesh.alpha(lc, fade));
+                    continue;
+                }
                 case ORBIT: {
                     float a = t * 2.2f + i * (float) (Math.PI * 2 / 3);
                     x = (float) Math.cos(a) * 11f;
@@ -88,6 +107,16 @@ public final class AuraCosmetic extends Cosmetic {
     }
 
     private static float frac(float v) { return v - (float) Math.floor(v); }
+
+    /** A falling leaf: a pointed oval tumbling as it goes, lighter at the tip. */
+    private static void leaf(ModelRenderer mr, float x, float y, float z, float s, float spin, int c) {
+        float e1x = (float) Math.cos(spin) * 0.8f * s, e1z = (float) Math.sin(spin) * 0.8f * s;
+        float tilt = spin * 0.7f;
+        float e2x = (float) Math.sin(tilt) * 0.5f * 1.4f * s, e2y = (float) Math.cos(tilt) * 1.4f * s, e2z = 0.3f * 1.4f * s;
+        int tip = Mesh.alpha(Colors.lerp(c, 0xFFFFFFFF, 0.25f), ((c >>> 24) & 0xFF) / 255f);
+        Mesh.quad(mr, x - e2x, y - e2y, z - e2z, x - e1x, y, z - e1z, x + e2x * 0.8f, y + e2y * 0.8f, z + e2z * 0.8f, x + e1x, y, z + e1z,
+                tip, c, Mesh.shade(c, 0.8f), c);
+    }
 
     /** Two crossed diamonds so the particle reads from any angle. */
     private static void diamond(ModelRenderer mr, float x, float y, float z, float s, int c) {

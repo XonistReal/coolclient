@@ -240,6 +240,50 @@ function signed(body) {
   assert.deepStrictEqual([b.uuid, b.media, b.entitlements], [yt, true, ['media']]);
   assert.strictEqual(b.user.loadout.equipped.CAPE, 'cape_premiere');
 
+  // Seasonal drops: wearing one during its season keeps it; afterwards only keepers show it.
+  let when = Date.UTC(2026, 10, 20); // Nov 20, Thanksgiving season
+  const seasonal = createApp({ env: { AURORA_INSECURE: '1', FOUNDER_LIMIT: '0', ADMIN_TOKEN: 'a' }, clock: () => when });
+  const sl = async (method, url, body, token) =>
+    (await seasonal.handle({ method, url, ip: '10.0.0.4', headers: token ? { authorization: 'Bearer ' + token } : {}, body: body === undefined ? null : JSON.stringify(body) })).body;
+  const signIn = async (name, uuid) => {
+    const c = await sl('POST', '/api/auth/challenge', { name, uuid });
+    return (await sl('POST', '/api/auth/verify', { name, uuid, serverId: c.serverId, offline: true })).token;
+  };
+  const early = '55555555-0000-0000-0000-000000000001', late = '55555555-0000-0000-0000-000000000002';
+  const earlyToken = await signIn('Early', early), lateToken = await signIn('Late', late);
+  b = await sl('PUT', '/api/me/loadout', { equipped: { CAPE: 'cape_gobbler', HAT: 'hat_turkey', WINGS: 'wings_angel' } }, earlyToken);
+  assert.deepStrictEqual(b.claimed.sort(), ['cape_gobbler', 'hat_turkey'], 'worn in season: kept');
+  assert.deepStrictEqual((await sl('GET', '/api/me', undefined, earlyToken)).entitlements, ['cape_gobbler', 'hat_turkey']);
+  b = await sl('PUT', '/api/me/loadout', { equipped: { CAPE: 'cape_gobbler' } }, earlyToken);
+  assert.deepStrictEqual(b.claimed, [], 'nothing new to keep');
+  assert.deepStrictEqual((await sl('GET', '/api/players/' + early)).loadout.equipped, { CAPE: 'cape_gobbler' });
+  when = Date.UTC(2026, 11, 3); // Dec 3: season over
+  b = await sl('PUT', '/api/me/loadout', { equipped: { CAPE: 'cape_autumn', AURA: 'aura_leaves' } }, lateToken);
+  assert.deepStrictEqual(b.claimed, [], 'too late to keep');
+  assert.deepStrictEqual((await sl('GET', '/api/players/' + late)).loadout.equipped, {}, 'not kept: hidden after the season');
+  assert.deepStrictEqual((await sl('GET', '/api/players/' + early)).loadout.equipped, { CAPE: 'cape_gobbler' }, 'kept: still shows');
+  await sl('POST', '/api/admin/grant', { uuid: late, items: ['owner'] }, 'a');
+  assert.deepStrictEqual((await sl('GET', '/api/players/' + late)).loadout.equipped, { CAPE: 'cape_autumn', AURA: 'aura_leaves' }, 'Owner rank shows everything');
+  // A whole drop as a bundle, any time of year (here in December), and taken back the same way.
+  const gift = '55555555-0000-0000-0000-000000000003';
+  const giftToken = await signIn('Gifted', gift);
+  b = await sl('POST', '/api/admin/grant', { uuid: gift, items: ['thanksgiving', 'not_a_season'] }, 'a');
+  assert.deepStrictEqual(b.entitlements, ['aura_leaves', 'cape_autumn', 'cape_gobbler', 'cape_harvestmoon', 'hat_pilgrim', 'hat_turkey']);
+  assert.deepStrictEqual(b.ignored, ['not_a_season'], 'typos are reported');
+  await sl('PUT', '/api/me/loadout', { equipped: { CAPE: 'cape_harvestmoon', HAT: 'hat_turkey' } }, giftToken);
+  assert.deepStrictEqual((await sl('GET', '/api/players/' + gift)).loadout.equipped, { CAPE: 'cape_harvestmoon', HAT: 'hat_turkey' }, 'given bundle shows after the season');
+  b = await sl('POST', '/api/admin/revoke', { uuid: gift, items: ['thanksgiving'] }, 'a');
+  assert.deepStrictEqual(b.entitlements, []);
+  b = await sl('POST', '/api/admin/grant', { username: 'NeverSignedIn', items: ['thanksgiving'] }, 'a');
+  assert.strictEqual(b.pending, true, 'held for a name that has not signed in');
+  const ns = '55555555-0000-0000-0000-000000000004';
+  await signIn('NeverSignedIn', ns);
+  assert.strictEqual((await sl('GET', '/api/me', undefined, await signIn('NeverSignedIn', ns))).entitlements.length, 6, 'applied on first sign-in');
+
+  when = Date.UTC(2027, 10, 1); // back next November
+  b = await sl('PUT', '/api/me/loadout', { equipped: { CAPE: 'cape_harvestmoon' } }, earlyToken);
+  assert.deepStrictEqual(b.claimed, ['cape_harvestmoon'], 'next year: back again');
+
   // Real sign-ins: Mojang's answer decides. 204 = not joined (401), an outage or block = 502, 200 = signed in.
   for (const [status, body, expected] of [[204, null, 401], [403, null, 502], [200, { id: '069a79f444e94726a5befca90e38aaf5', name: 'Notch' }, 200]]) {
     const real = createApp({ env: {}, fetchJson: async () => ({ status, body }) });

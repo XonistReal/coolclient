@@ -190,6 +190,10 @@ final class SelfTestReel {
         for (String cape : capes) steps.add(orbit(cape, 1.8, -55, 55, cape));
         steps.add(orbit("cape_founder", 4.0, -70, 70, "cape_founder"));
         for (String cape : new String[] {"cape_media", "cape_onair", "cape_premiere", "cape_owner"}) steps.add(orbit(cape, 4.0, -70, 70, cape));
+        // Thanksgiving drop: the hats and the leaves from the front, then each cape from behind.
+        steps.add(orbit("look-hat_turkey", 4.0, 125, 235, "hat_turkey", "aura_leaves", "cape_gobbler"));
+        steps.add(orbit("look-hat_pilgrim", 4.0, 125, 235, "hat_pilgrim", "cape_harvestmoon"));
+        for (String cape : new String[] {"cape_autumn", "cape_gobbler", "cape_harvestmoon"}) steps.add(orbit(cape, 4.0, -70, 70, cape));
 
         // Skies from a floating spectator camera; the edit pans across the wide frame.
         steps.add(once(() -> {

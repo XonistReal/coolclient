@@ -15,6 +15,8 @@ public abstract class Cosmetic {
     public final boolean animated;
     /** How it's unlocked when the API server enforces ownership. */
     public final Unlock unlock;
+    /** The seasonal drop it belongs to, or null. Set once while the catalog is built. */
+    private Season season;
 
     protected Cosmetic(String id, String name, String description, CosmeticType type, Rarity rarity,
                        int defaultColor, boolean tintable, boolean animated) {
@@ -32,6 +34,14 @@ public abstract class Cosmetic {
         this.tintable = tintable;
         this.animated = animated;
         this.unlock = unlock;
+    }
+
+    /** The seasonal drop it belongs to, or null for cosmetics that are always around. */
+    public Season season() { return season; }
+
+    /** Marks it as part of a seasonal drop (catalog only). */
+    void in(Season s) {
+        this.season = s;
     }
 
     /**

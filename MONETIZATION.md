@@ -37,6 +37,25 @@ Three tiers are never sold and are checked even with enforcement off:
 - **Owner**: the project owner's rank. Shows the Owner cape and a purple crown badge, and covers
   every cosmetic. Only an admin grant gives it.
 
+## Seasonal drops
+
+Some cosmetics belong to a season that comes back every year (`Season.java`, plus `seasons` and
+`seasonal` in `server/catalog.json`; dates are UTC). During the season they're in everyone's
+locker for free, and equipping one while signed in keeps it for good (the server adds it to the
+player's entitlements). After the season they leave the locker for players who didn't keep one,
+and the server stops showing them on those players, even with enforcement off.
+
+To give a whole drop at any time of year (giveaways, creators), grant the season's name as a
+bundle: `node admin.js grant <name> thanksgiving` (or `revoke` to take it back). Single cosmetics
+work the same way with their ids. A name that has never signed in gets it on first sign-in.
+
+| Season | Dates | Cosmetics |
+|---|---|---|
+| Thanksgiving | Nov 1 to Nov 30 | Autumn, Gobbler and Harvest Moon capes; Pilgrim Hat; Turkey Hat; Falling Leaves aura |
+
+To add a drop, add a `Season`, add its cosmetics in `CosmeticCatalog` with `add(cosmetic, season)`,
+and list both in `catalog.json`. `CatalogSyncTest` fails if they don't match.
+
 ## Server settings
 
 | Variable | Meaning |

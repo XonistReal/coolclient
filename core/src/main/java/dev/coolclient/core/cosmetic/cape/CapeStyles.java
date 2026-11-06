@@ -383,4 +383,202 @@ public final class CapeStyles {
         if (lettering("OWNER", u - 1f / 40f, v - 1f / 64f, 41)) return 0xFF05070D;
         return add(c, 0xFFFFFFFF, stars(u, v, t, 0.03f, 13) * 0.7f);
     };
+
+    // ------------------------------------------------------------------ Thanksgiving drop (seasonal)
+
+    private static final int[] LEAF_COLORS = {0xFFE8471C, 0xFFF29A1F, 0xFFF7C843, 0xFFB5301A, 0xFFD9661C, 0xFFA8541E};
+
+    /** Maple leaf outline: radius (relative) at angle a from the tip; five lobes, the lowest two smaller. */
+    private static float mapleLobe(float a) {
+        float c = (float) Math.pow(Math.abs(Math.cos(a * 2.5f)), 1.5);
+        float lobe = 0.5f + 0.5f * c;
+        float aa = Math.abs(a);
+        if (aa > 1.9f) lobe *= 1f - 0.4f * clamp01((aa - 1.9f) / 1.2f);
+        return lobe;
+    }
+
+    /** Autumn: a warm late-afternoon sky, maple leaves tumbling down and a pile of them at the bottom. */
+    public static final CapeStyle AUTUMN = (u, v, t, tint) -> {
+        float px = u * 40f, py = v * 64f;
+        boolean shadow = false;
+        for (int i = 6; i >= 0; i--) {
+            float h = Noise.hash(i, 2);
+            float lx0 = 0.12f + 0.76f * Noise.hash(i, 1) + 0.06f * (float) Math.sin(t * (0.9f + h * 0.6f) + i * 1.7f);
+            float ly0 = -0.12f + 1.24f * frac(Noise.hash(i, 3) + t * (0.045f + Noise.hash(i, 4) * 0.035f));
+            float lx = px - lx0 * 40f, ly = py - ly0 * 64f;
+            if (Math.abs(lx) > 10f || Math.abs(ly) > 10f) continue;
+            float size = 3.3f + Noise.hash(i, 5) * 1.6f;
+            float rot = t * (0.6f + Noise.hash(i, 6)) * (i % 2 == 0 ? 1f : -1f) + i * 2f;
+            float flip = 0.35f + 0.65f * Math.abs((float) Math.cos(t * (0.8f + Noise.hash(i, 7)) + i));
+            float cr = (float) Math.cos(rot), sr = (float) Math.sin(rot);
+            for (int pass = 0; pass < 2; pass++) {
+                // Pass 0 is the leaf, pass 1 its shadow one pixel down and right.
+                float qx = lx - pass, qy = ly - pass;
+                float rx = (qx * cr - qy * sr) / flip, ry = qx * sr + qy * cr;
+                float r = (float) Math.sqrt(rx * rx + ry * ry);
+                float shape = size * mapleLobe((float) Math.atan2(rx, -ry));
+                boolean stem = Math.abs(rx) < 0.45f && ry > 0 && ry < size * 1.3f;
+                if (r < shape || stem) {
+                    if (pass == 1) {
+                        shadow = true;
+                        break;
+                    }
+                    int col = LEAF_COLORS[(int) (Noise.hash(i, 8) * LEAF_COLORS.length) % LEAF_COLORS.length];
+                    if (stem && r >= shape) return Colors.brighten(col, 0.55f);
+                    if (r > shape - 0.7f) return Colors.brighten(col, 0.6f);
+                    int c = Colors.lerp(Colors.brighten(col, 1.2f), col, r / shape);
+                    if (Math.abs(rx) < 0.35f && ry < 0) c = Colors.brighten(c, 0.8f);
+                    return c;
+                }
+            }
+        }
+        // Sky, with a soft sun up and to the right.
+        int c = Colors.lerp(0xFFE58A34, 0xFFA8401C, clamp01(v * 1.25f));
+        c = Colors.lerp(c, 0xFF3C160C, clamp01((v - 0.58f) * 2.2f));
+        float sx = (u - 0.72f) * 10f, sy = (v - 0.12f) * 16f;
+        float sun = clamp01(1f - (sx * sx + sy * sy) / 22f);
+        c = add(c, 0xFFFFD27A, sun * sun * 0.45f);
+        c = Colors.lerp(c, Colors.brighten(c, 1.07f), Noise.fbm(u * 3 + t * 0.05f, v * 3, 2) * 0.5f);
+        // Leaf pile along the bottom.
+        if (v > 0.885f + 0.025f * (float) Math.sin(u * 9f + 1f)) {
+            int cell = (int) (Noise.hash((int) (px / 2), (int) (py / 2), 5) * LEAF_COLORS.length) % LEAF_COLORS.length;
+            c = Colors.brighten(LEAF_COLORS[cell], 0.7f + 0.2f * Noise.hash((int) px, (int) py, 9));
+        }
+        return shadow ? Colors.brighten(c, 0.84f) : c;
+    };
+
+    private static final int[] FEATHERS = {0xFFB8321F, 0xFFE0731F, 0xFFF2B33A, 0xFF9A5426, 0xFFCF4A1E};
+
+    /** Gobbler: a cartoon turkey in front of its fanned tail. It gobbles (bobs its head) now and then. */
+    public static final CapeStyle GOBBLER = (u, v, t, tint) -> {
+        float x = u * 40f, y = v * 64f;
+        // Head with eyes, beak and wattle.
+        float ph = frac(t / 5f);
+        float bob = ph < 0.3f ? (float) Math.sin(ph / 0.3f * Math.PI * 3) * 1.0f : 0f;
+        float hx = 20f, hy = 36.5f + bob;
+        float swing = (float) Math.sin(t * 3f) * 0.4f + bob * 0.4f;
+        float wx = x - (21.4f + swing), wy = (y - (41.6f + bob)) / 2.0f;
+        if (wx * wx / 1.2f + wy * wy < 1f) return Colors.lerp(0xFFE8333F, 0xFFB3121F, clamp01(wy * 0.5f + 0.5f));
+        if (y > hy + 1.6f && y < hy + 4.4f && Math.abs(x - hx) < (hy + 4.4f - y) * 0.55f) return 0xFFF5A623;
+        boolean blink = frac(t / 3.7f) > 0.96f;
+        for (int s = -1; s <= 1; s += 2) {
+            float ex = x - (hx + s * 1.9f), ey = y - (hy - 0.6f);
+            if (blink && Math.abs(ey) < 0.5f && Math.abs(ex) < 1.1f) return 0xFF1A0E08;
+            if (!blink && ex * ex + ey * ey < 1.6f) return ex * ex + ey * ey < 0.45f ? 0xFF120A06 : 0xFFF8F2E8;
+        }
+        float hd = (float) Math.sqrt((x - hx) * (x - hx) + (y - hy) * (y - hy));
+        if (hd < 4.2f) return Colors.lerp(0xFFDDA16A, 0xFFB97A45, clamp01((y - hy + 4f) / 8f));
+        if (hd < 4.9f) return 0xFF2A140A;
+        // Body: scalloped brown feathers, lighter in the middle.
+        float bx = (x - 20f) / 8.5f, by = (y - 50.5f) / 9.5f;
+        float e = bx * bx + by * by;
+        if (e < 1f) {
+            int c = Colors.lerp(0xFF9A5A2E, 0xFF6E3A1C, clamp01(e * 1.2f));
+            int row = (int) Math.floor((y - 40f) / 3f);
+            float fx = frac((x + (row % 2) * 1.5f) / 3f) - 0.5f, fy = frac((y - 40f) / 3f);
+            if (fy > 0.72f - fx * fx * 1.6f) c = Colors.brighten(c, 0.78f);
+            return c;
+        }
+        if (e < 1.18f) return 0xFF2A140A;
+        // Feet.
+        for (int s = -1; s <= 1; s += 2) {
+            float fx = x - (20f + s * 3.5f);
+            if ((Math.abs(fx) < 0.6f && y > 58.5f && y < 61.6f) || (Math.abs(fx) < 2.2f && y >= 61.6f && y < 62.8f)) return 0xFFF09A2A;
+        }
+        // Tail fan.
+        float dx = x - 20f, dy = 47f - y;
+        float r = (float) Math.sqrt(dx * dx + dy * dy);
+        float a = (float) Math.atan2(dx, dy) * (1f - 0.04f * (float) Math.sin(t * 0.9f)) + 0.06f * (float) Math.sin(t * 1.4f);
+        int n = 9;
+        float span = 1.95f, fw = span * 2 / n;
+        float pos = (a + span) / fw;
+        int k = (int) Math.floor(pos);
+        int bg = Colors.lerp(0xFF3A1B0E, 0xFF1C0C06, v);
+        bg = add(bg, 0xFFFF9A3C, clamp01(1f - r / 34f) * 0.22f);
+        if (k < 0 || k >= n) return bg;
+        float fa = pos - k - 0.5f;
+        float len = 41f - Math.abs(k - (n - 1) / 2f) * 1.2f + Noise.hash(k, 4) * 2f;
+        float rmax = len - 7f * (2 * fa) * (2 * fa);
+        if (r > rmax + 0.7f) return bg;
+        if (Math.abs(fa) > 0.44f || r > rmax) return 0xFF2A140A;
+        float rel = r / rmax;
+        int col = FEATHERS[Math.abs(k - (n - 1) / 2) % FEATHERS.length];
+        int c;
+        if (rel > 0.87f) c = Colors.lerp(0xFFF6E8CC, 0xFFE2CBA0, (rel - 0.87f) / 0.13f);
+        else if (rel > 0.79f) c = 0xFF3A1E10;
+        else c = Colors.lerp(Colors.brighten(col, 0.55f), col, clamp01(rel * 1.6f));
+        c = Colors.brighten(c, 1f - 0.25f * (fa / 0.44f) * (fa / 0.44f));
+        if (Math.abs(fa) < 0.05f && rel < 0.79f) c = Colors.brighten(c, 0.8f);
+        float sheen = clamp01(1f - Math.abs(frac(a * 0.5f - t * 0.3f) - 0.5f) * 8f);
+        return add(c, 0xFFFFFFFF, sheen * 0.15f * (rel < 0.79f ? 1f : 0.3f));
+    };
+
+    /** x, y, half-width, half-height of the two pumpkins on the Harvest Moon cape (cape pixels). */
+    private static final float[][] PUMPKINS = {{8f, 60.2f, 3.4f, 2.5f}, {31.5f, 61f, 2.8f, 2.1f}};
+    private static final float[] CORN_SHOCKS = {10f, 29f};
+
+    /** Harvest Moon: a big orange moon over the fields, corn shocks, wheat in the wind and two pumpkins. */
+    public static final CapeStyle HARVEST_MOON = (u, v, t, tint) -> {
+        float x = u * 40f, y = v * 64f;
+        // Pumpkins in front.
+        for (float[] p : PUMPKINS) {
+            float ex = (x - p[0]) / p[2], ey = (y - p[1]) / p[3];
+            if (Math.abs(x - p[0] - 0.3f) < 0.5f && y > p[1] - p[3] - 1.3f && y < p[1] - p[3] + 0.4f) return 0xFF4A6A22;
+            if (ex * ex + ey * ey < 1f) {
+                int c = Colors.lerp(0xFFF59A33, 0xFFC4521A, clamp01(ey * 0.5f + 0.5f + ex * ex * 0.3f));
+                if (Math.abs((float) Math.cos(ex * 3.2f)) < 0.25f) c = Colors.brighten(c, 0.75f);
+                return c;
+            }
+        }
+        // Wheat in the wind.
+        if (y > 52f) {
+            int s = (int) Math.floor(x / 2.5f);
+            float hs = 6f + Noise.hash(s, 11) * 5f;
+            float sway = (float) Math.sin(t * 1.6f + s * 0.7f) * (64f - y) * 0.06f;
+            float sx = s * 2.5f + 1.2f + sway;
+            if (y > 64f - hs) {
+                boolean head = y < 64f - hs + 2.6f;
+                if (Math.abs(x - sx) < (head ? 0.9f : 0.45f)) return head ? 0xFF9A6A26 : 0xFF3A2410;
+            }
+        }
+        // Hills and corn shocks, lit from behind by the moon.
+        float hill = 50f + 2.2f * (float) Math.sin(x * 0.12f + 1f) + 1.2f * (float) Math.sin(x * 0.31f);
+        for (float sx : CORN_SHOCKS) {
+            float base = 50f + 2.2f * (float) Math.sin(sx * 0.12f + 1f) + 1.2f * (float) Math.sin(sx * 0.31f) + 0.5f;
+            float top = base - 9f;
+            if (y > top && y < base) {
+                float half = (y - top) / 9f * 3.6f;
+                if (y > top + 3.2f && y < top + 4.0f) half += 0.4f;
+                if (Math.abs(x - sx) < half) return Math.abs(x - sx) > half - 0.6f || y < top + 0.8f ? 0xFF6A3424 : 0xFF1E0F14;
+            }
+        }
+        if (y > hill) return y - hill < 0.8f ? 0xFF5A2A28 : Colors.lerp(0xFF1E0E14, 0xFF0E060A, clamp01((y - hill) / 12f));
+        // A V of geese flying across now and then.
+        float gp = frac(t / 14f);
+        float lead = -6f + gp * 56f, gy = 33f - gp * 5f;
+        for (int j = 0; j < 5; j++) {
+            int rank = (j + 1) / 2, side = j % 2 == 0 ? 1 : -1;
+            float bx = x - (lead - rank * 4.2f), by = y - (gy + side * rank * 2.6f);
+            float flap = (float) Math.sin(t * 7f + j * 1.3f) * 0.7f;
+            if (Math.abs(bx) < 1.7f && Math.abs(by + Math.abs(bx) * 0.55f - 0.3f + flap * (Math.abs(bx) / 1.7f)) < 0.42f) return 0xFF140A18;
+        }
+        // Sky.
+        int c = Colors.lerp(0xFF0A0B26, 0xFF2A1640, clamp01(y / 40f));
+        c = Colors.lerp(c, 0xFF7A3048, clamp01((y - 30f) / 20f));
+        c = add(c, 0xFFFFFFFF, stars(u, v, t, 0.03f, 23) * clamp01(1f - y / 36f) * 0.8f);
+        float md = (float) Math.sqrt((x - 20f) * (x - 20f) + (y - 20f) * (y - 20f));
+        float moonR = 10.5f;
+        if (md < moonR) {
+            c = Colors.lerp(0xFFFFC56A, 0xFFF0781E, clamp01((md / moonR) * (md / moonR) * 0.8f + (y - 20f) / moonR * 0.25f + 0.2f));
+            float n = Noise.fbm(x * 0.25f + 3f, y * 0.25f + 7f, 3);
+            c = Colors.lerp(c, Colors.brighten(c, 0.78f), clamp01((n - 0.52f) * 3f));
+            if (md > moonR - 0.8f) c = Colors.brighten(c, 0.9f);
+        } else {
+            float g = clamp01(1f - (md - moonR) / 9f);
+            c = add(c, 0xFFFF9A3C, g * g * 0.45f);
+        }
+        // Thin clouds drifting across the moon.
+        float cloud = clamp01((Noise.fbm(x * 0.08f - t * 0.15f, y * 0.35f, 3) - 0.5f) * 3f) * (float) Math.exp(-((y - 25f) / 3.5f) * ((y - 25f) / 3.5f));
+        return Colors.lerp(c, md < moonR + 2f ? 0xFF9A4A3A : 0xFF2A1638, cloud * 0.5f);
+    };
 }

@@ -33,7 +33,7 @@ public class GivenCosmeticsTest {
             assertEquals(id, false, listed(nobody, id));
         }
         for (Cosmetic c : CosmeticCatalog.all()) {
-            if (c.unlock.sold()) assertEquals(c.id, true, nobody.listed(c));
+            if (c.unlock.sold() && c.season() == null) assertEquals(c.id, true, nobody.listed(c));
         }
 
         Entitlements media = owning("media");

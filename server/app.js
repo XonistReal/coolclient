@@ -15,6 +15,11 @@
  * wearer owns (catalog.json says which are free). Ownership is granted by an admin call or a
  * signed payment webhook. Exclusive and Media cosmetics are always checked. See MONETIZATION.md.
  *
+ * Seasonal drops (catalog.json "seasons"): a seasonal cosmetic comes back every year during its
+ * season. Equipping one while signed in during the season keeps it for good; outside the season
+ * only players who kept one show it. An admin can give a whole drop at any time by granting the
+ * season's name ("thanksgiving") as a bundle.
+ *
  * Settings (environment variables on Node, vars/secrets on Cloudflare):
  *   AURORA_INSECURE       "1" to accept offline/cracked identities (development only!)
  *   ENFORCE_ENTITLEMENTS  "1" to hide unowned paid cosmetics from other players
@@ -30,9 +35,13 @@
  *                         such as Cloudflare; RELAY_KEY is the key it expects
  * Node-only settings (PORT, DATA_DIR, TRUST_PROXY) are in server.js.
  */
-const CATALOG = require('./catalog.json').cosmetics;
+const CATALOG_FILE = require('./catalog.json');
+const CATALOG = CATALOG_FILE.cosmetics;
+const SEASONS = CATALOG_FILE.seasons || {};
+/** Cosmetic id -> season id, for cosmetics that belong to a seasonal drop. */
+const SEASONAL = CATALOG_FILE.seasonal || {};
 
-const VERSION = '0.1.3-beta';
+const VERSION = '0.1.4-beta';
 const FOUNDER_ITEM = 'cape_founder';
 const MEDIA = 'media';
 const OWNER = 'owner';
@@ -139,6 +148,26 @@ function safeEqual(a, b) {
   let diff = 0;
   for (let i = 0; i < x.length; i++) diff |= x[i] ^ y[i];
   return diff === 0;
+}
+
+/** Whether a seasonal cosmetic's season is on at time `ms` (UTC dates; a season may run past New Year). */
+function inSeason(id, ms) {
+  const s = SEASONS[SEASONAL[id]];
+  if (!s) return false;
+  const d = new Date(ms);
+  const day = (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+  const [from, to] = [s.from, s.to].map((k) => parseInt(k.slice(0, 2), 10) * 100 + parseInt(k.slice(3, 5), 10));
+  return from <= to ? day >= from && day <= to : day >= from || day <= to;
+}
+
+/** Season names in a grant ("thanksgiving") stand for every cosmetic of that season (a bundle). */
+function expandBundles(items) {
+  const out = [];
+  for (const i of Array.isArray(items) ? items : []) {
+    if (typeof i === 'string' && SEASONS[i]) out.push(...Object.keys(SEASONAL).filter((id) => SEASONAL[id] === i));
+    else out.push(i);
+  }
+  return out;
 }
 
 /** Keeps only well-formed loadout data so clients can't store arbitrary blobs. */
@@ -251,6 +280,8 @@ async function fetchJson(url, headers) {
 function createApp(opts) {
   const env = (opts && opts.env) || {};
   const persist = (opts && opts.persist) || (() => {});
+  /** Wall clock for seasons (tests pass their own). */
+  const clock = (opts && opts.clock) || (() => Date.now());
   const getJson = (opts && opts.fetchJson) || fetchJson;
   const RELAY = (env.MOJANG_RELAY || '').replace(/\/+$/, '');
   const RELAY_KEY = env.RELAY_KEY || '';
@@ -330,11 +361,16 @@ function createApp(opts) {
   /**
    * Free items, owned items, and whatever the owner's rank includes. Unknown ids are never owned.
    * Media covers everything Supporter+ does, plus the Media cosmetics; exclusives need their own
-   * grant. The Owner rank covers everything.
+   * grant. The Owner rank covers everything. Seasonal cosmetics are owned once worn during their
+   * season (or granted).
    */
   function owns(uuid, id) {
     const tier = CATALOG[id];
     if (!tier) return false;
+    if (SEASONAL[id]) {
+      const own = entitlementsOf(uuid);
+      return own.includes(id) || own.includes(OWNER);
+    }
     if (tier === 'free') return true;
     const items = entitlementsOf(uuid);
     if (items.includes(id) || items.includes(OWNER)) return true;
@@ -346,13 +382,13 @@ function createApp(opts) {
 
   /**
    * What other players get to see. With enforcement on, unowned cosmetics are dropped; given ones
-   * (Founder, Media, Owner) are always checked, even while everything else is free.
+   * (Founder, Media, Owner) and seasonal ones are always checked, even while everything else is free.
    */
   function visibleLoadout(uuid, loadout) {
     const l = loadout || sanitizeLoadout(null);
     const out = { equipped: {}, colors: {}, chroma: {} };
     for (const [slot, id] of Object.entries(l.equipped || {})) {
-      if ((ENFORCE || GIVEN_TIERS.includes(CATALOG[id])) && !owns(uuid, id)) continue;
+      if ((ENFORCE || GIVEN_TIERS.includes(CATALOG[id]) || SEASONAL[id]) && !owns(uuid, id)) continue;
       out.equipped[slot] = id;
       if (l.colors && l.colors[id]) out.colors[id] = l.colors[id];
       if (l.chroma && l.chroma[id]) out.chroma[id] = true;
@@ -360,9 +396,9 @@ function createApp(opts) {
     return out;
   }
 
-  /** Adds or removes items/ranks and returns the new list. Only catalog ids and ranks are accepted. */
+  /** Adds or removes items/ranks and returns the new list. Only catalog ids, ranks and season bundles are accepted. */
   function changeEntitlements(uuid, items, grant) {
-    const valid = (Array.isArray(items) ? items : []).filter((i) => typeof i === 'string' && (RANKS.includes(i) || CATALOG[i]));
+    const valid = expandBundles(items).filter((i) => typeof i === 'string' && (RANKS.includes(i) || CATALOG[i]));
     const current = new Set(entitlementsOf(uuid));
     for (const i of valid) {
       if (grant) current.add(i);
@@ -548,7 +584,12 @@ function createApp(opts) {
       user.updated = Date.now();
       touch('users', a.uuid);
       online.set(a.uuid, Date.now());
-      return ok({ ok: true, loadout: user.loadout });
+      // Wearing a seasonal cosmetic during its season keeps it for good.
+      const t = clock();
+      const have = entitlementsOf(a.uuid);
+      const claimed = Object.values(user.loadout.equipped).filter((id) => inSeason(id, t) && !have.includes(id));
+      if (claimed.length) changeEntitlements(a.uuid, claimed, true);
+      return ok({ ok: true, loadout: user.loadout, claimed });
     }
 
     if (req.method === 'POST' && p === '/api/heartbeat') {
@@ -594,7 +635,9 @@ function createApp(opts) {
       const body = json();
       const result = await applyPurchase(body, body.items, admin[1] === 'grant');
       if (!result) return fail(400, 'Give a uuid or a valid Minecraft username');
-      return ok(result);
+      // Unknown names are skipped; say which, so a typo doesn't go unnoticed.
+      const ignored = (Array.isArray(body.items) ? body.items : []).filter((i) => !(RANKS.includes(i) || CATALOG[i] || SEASONS[i]));
+      return ok(ignored.length ? Object.assign(result, { ignored }) : result);
     }
 
     // Payment provider webhook (or a small relay in front of one). The raw body must be signed:

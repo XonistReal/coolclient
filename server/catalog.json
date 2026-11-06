@@ -1,5 +1,16 @@
 {
-  "_comment": "Unlock tier per cosmetic: free, supporter (Supporter rank), store (sold alone, or with Supporter+), exclusive (never sold; granted by the server), media (never sold; comes with the Media rank for creators) or owner (only the project owner's Owner rank). Keep in sync with Unlock in core; CatalogSyncTest checks it.",
+  "_comment": "Unlock tier per cosmetic: free, supporter (Supporter rank), store (sold alone, or with Supporter+), exclusive (never sold; granted by the server), media (never sold; comes with the Media rank for creators) or owner (only the project owner's Owner rank). Seasonal cosmetics (see seasonal) come out every year between their season's from and to dates (UTC, MM-DD): equipping one while signed in during the season keeps it for good, and outside the season only players who kept one show it. Keep in sync with Unlock and Season in core; CatalogSyncTest checks it.",
+  "seasons": {
+    "thanksgiving": { "name": "Thanksgiving", "from": "11-01", "to": "11-30" }
+  },
+  "seasonal": {
+    "cape_autumn": "thanksgiving",
+    "cape_gobbler": "thanksgiving",
+    "cape_harvestmoon": "thanksgiving",
+    "hat_pilgrim": "thanksgiving",
+    "hat_turkey": "thanksgiving",
+    "aura_leaves": "thanksgiving"
+  },
   "cosmetics": {
     "cape_aurora": "store",
     "cape_logo": "supporter",
@@ -14,6 +25,9 @@
     "cape_storm": "supporter",
     "cape_founder": "exclusive",
     "cape_gradient": "free",
+    "cape_autumn": "free",
+    "cape_gobbler": "free",
+    "cape_harvestmoon": "free",
     "cape_media": "media",
     "cape_onair": "media",
     "cape_premiere": "media",
@@ -31,6 +45,8 @@
     "hat_witch": "supporter",
     "hat_catears": "free",
     "hat_horns": "supporter",
+    "hat_pilgrim": "free",
+    "hat_turkey": "free",
     "bandana_red": "free",
     "bandana_black": "free",
     "bandana_aurora": "free",
@@ -38,6 +54,7 @@
     "aura_flame": "supporter",
     "aura_snow": "free",
     "aura_hearts": "free",
-    "aura_orbit": "supporter"
+    "aura_orbit": "supporter",
+    "aura_leaves": "free"
   }
 }

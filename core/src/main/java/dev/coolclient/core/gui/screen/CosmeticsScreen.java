@@ -6,6 +6,7 @@ import dev.coolclient.core.cosmetic.Cosmetic;
 import dev.coolclient.core.cosmetic.CosmeticType;
 import dev.coolclient.core.cosmetic.CosmeticsManager;
 import dev.coolclient.core.cosmetic.Loadout;
+import dev.coolclient.core.cosmetic.Season;
 import dev.coolclient.core.cosmetic.cape.CapeCosmetic;
 import dev.coolclient.core.font.FontRenderer;
 import dev.coolclient.core.font.Fonts;
@@ -189,13 +190,18 @@ public final class CosmeticsScreen extends UIScreen {
         scroll.update(r, mx, my, CoolClient.get().platform().input().isMouseDown(0));
     }
 
-    /** Tier pill on cosmetics this account doesn't own (only shown when the server enforces ownership). */
+    /**
+     * Tier pill on cosmetics this account doesn't own (shown when the server enforces ownership, and
+     * on seasonal cosmetics during their season until you keep one).
+     */
     private static void lockChip(GuiRenderer r, Cosmetic c, float x, float y) {
-        String label = c.unlock.displayName.toUpperCase(java.util.Locale.ROOT);
+        Season s = c.season();
+        String label = s != null ? s.chip() : c.unlock.displayName.toUpperCase(java.util.Locale.ROOT);
+        int color = s != null ? s.color : c.unlock.color;
         float w = Fonts.get(6f).width(label) + 16;
         Draw.rounded(r, x, y, w, 10, 5, Colors.withAlpha(0x000000, 150));
-        Icons.draw(r, Icons.Icon.STAR, x + 3, y + 2, 6, c.unlock.color);
-        Fonts.get(6f).draw(r, label, x + 11, y + 2.5f, c.unlock.color, false);
+        Icons.draw(r, Icons.Icon.STAR, x + 3, y + 2, 6, color);
+        Fonts.get(6f).draw(r, label, x + 11, y + 2.5f, color, false);
     }
 
     private void drawThumb(GuiRenderer r, Cosmetic c, float cx, float cy, Loadout l) {
@@ -245,7 +251,27 @@ public final class CosmeticsScreen extends UIScreen {
         List<String> desc = ModMenuScreen.wrap(Fonts.small(), focused.description, w - 16);
         boolean eq = CoolClient.get().cosmetics().local().isEquipped(focused);
         boolean locked = !CoolClient.get().cosmetics().entitlements().owns(focused);
-        float bottom = y + h - (eq ? 24 : 4) - (locked ? 32 : 0) - (picker != null ? picker.preferredHeight() + 4 : 0);
+        Season season = focused.season();
+        dev.coolclient.core.cosmetic.Unlock how = focused.unlock;
+        String note = null;
+        int noteColor = how.color;
+        boolean buy = false;
+        if (season != null) {
+            noteColor = season.color;
+            note = !locked ? season.displayName + " drop. It's yours to keep."
+                    : "Free until " + season.lastDay() + ". " + (CoolClient.get().api().authenticated()
+                    ? "Equip it once and it's yours to keep." : "Turn on Online Features and equip it to keep it.");
+        } else if (locked) {
+            note = how == dev.coolclient.core.cosmetic.Unlock.EXCLUSIVE ? "Given to the first players. Never sold."
+                    : how == dev.coolclient.core.cosmetic.Unlock.MEDIA ? "For creators with the Media rank. Never sold."
+                    : how == dev.coolclient.core.cosmetic.Unlock.OWNER ? "Only the owner of Cool Client wears this."
+                    : eq ? "Preview: only you can see it" : "Others see it once unlocked";
+            buy = how.sold();
+        }
+        List<String> noteLines = note == null ? java.util.Collections.<String>emptyList() : ModMenuScreen.wrap(Fonts.small(), note, w - 16);
+        if (noteLines.size() > 2) noteLines = noteLines.subList(0, 2);
+        float noteH = note == null ? 0 : noteLines.size() * 9 + (buy ? 20 : 0) + 2;
+        float bottom = y + h - (eq ? 24 : 4) - noteH - (picker != null ? picker.preferredHeight() + 4 : 0);
         int lines = (int) Math.max(0, Math.min(3, Math.floor((bottom - (iy + 23)) / 9f)));
         for (int i = 0; i < Math.min(lines, desc.size()); i++) {
             Fonts.small().draw(r, desc.get(i), x + 8, iy + 23 + i * 9, Theme.TEXT_DIM, false);
@@ -263,17 +289,14 @@ public final class CosmeticsScreen extends UIScreen {
             unequip.setBounds(x + 8, y + h - 22, w - 16, 16);
             unequip.render(r, mx, my);
         }
-        if (locked) {
-            float ly = y + h - (eq ? 24 : 4) - 30;
-            dev.coolclient.core.cosmetic.Unlock how = focused.unlock;
-            String note = how == dev.coolclient.core.cosmetic.Unlock.EXCLUSIVE ? "Given to the first players. Never sold."
-                    : how == dev.coolclient.core.cosmetic.Unlock.MEDIA ? "For creators with the Media rank. Never sold."
-                    : how == dev.coolclient.core.cosmetic.Unlock.OWNER ? "Only the owner of Cool Client wears this."
-                    : eq ? "Preview: only you can see it" : "Others see it once unlocked";
-            Fonts.small().draw(r, Fonts.small().trim(note, w - 16), x + 8, ly, focused.unlock.color, false);
-            if (how.sold()) {
-                unlock.setLabel(focused.unlock == dev.coolclient.core.cosmetic.Unlock.SUPPORTER ? "Get Supporter" : "Buy in store");
-                unlock.setBounds(x + 8, ly + 11, w - 16, 16);
+        if (note != null) {
+            float ly = y + h - (eq ? 24 : 4) - noteH + 1;
+            for (int i = 0; i < noteLines.size(); i++) {
+                Fonts.small().draw(r, Fonts.small().trim(noteLines.get(i), w - 16), x + 8, ly + i * 9, noteColor, false);
+            }
+            if (buy) {
+                unlock.setLabel(how == dev.coolclient.core.cosmetic.Unlock.SUPPORTER ? "Get Supporter" : "Buy in store");
+                unlock.setBounds(x + 8, ly + noteLines.size() * 9 + 2, w - 16, 16);
                 unlock.render(r, mx, my);
             }
         }
@@ -288,7 +311,7 @@ public final class CosmeticsScreen extends UIScreen {
         if (showOwn.mouseClicked(mx, my, button)) return true;
         if (picker != null && picker.mouseClicked(mx, my, button)) return true;
         if (focused != null && CoolClient.get().cosmetics().local().isEquipped(focused) && unequip.mouseClicked(mx, my, button)) return true;
-        if (focused != null && focused.unlock.sold()
+        if (focused != null && focused.unlock.sold() && focused.season() == null
                 && !CoolClient.get().cosmetics().entitlements().owns(focused) && unlock.mouseClicked(mx, my, button)) return true;
         float y = py + 40;
         for (CosmeticType t : CosmeticType.values()) {

@@ -6,10 +6,12 @@
  *   API_URL=https://api.example.com ADMIN_TOKEN=... node admin.js grant Notch supporter
  *   node admin.js revoke Notch cape_aurora
  *   node admin.js grant 069a79f4-44e9-4726-a5be-fca90e38aaf5 supporter_plus
+ *   node admin.js grant Notch thanksgiving
  *
- * The player is a Minecraft name or UUID; items are ranks (supporter, supporter_plus, media, owner)
- * or cosmetic ids from catalog.json. media is for creators: Supporter+ plus the Media capes; owner is
- * the project owner's (everything, plus the Owner cape). Neither is ever sold.
+ * The player is a Minecraft name or UUID; items are ranks (supporter, supporter_plus, media, owner),
+ * cosmetic ids from catalog.json, or a season's name from catalog.json ("thanksgiving") for that
+ * whole seasonal drop as a bundle, at any time of year. media is for creators: Supporter+ plus the
+ * Media capes; owner is the project owner's (everything, plus the Owner cape). Neither is ever sold.
  * A name that has never signed in is resolved through Mojang, or held until
  * that player first signs in.
  */
@@ -31,6 +33,7 @@ fetch(`${api}/api/admin/${action}`, {
   .then(async (res) => {
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+    if (body.ignored) console.warn(`Skipped (not a rank, cosmetic or season): ${body.ignored.join(', ')}`);
     if (body.pending) console.log(`${player} hasn't signed in yet; it applies on their first sign-in.`);
     else console.log(`${body.uuid}: ${body.entitlements.join(', ') || '(nothing)'}`);
   })

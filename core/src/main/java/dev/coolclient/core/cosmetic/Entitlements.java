@@ -40,6 +40,8 @@ public final class Entitlements {
 
     public boolean owns(Cosmetic c) {
         if (owned.contains(OWNER)) return true;
+        // Seasonal cosmetics are yours once you've worn one during its season (the server keeps a record).
+        if (c.season() != null) return owned.contains(c.id);
         // Exclusive, Media and Owner cosmetics are hidden from others even while everything else is free.
         if (c.unlock == Unlock.EXCLUSIVE || c.unlock == Unlock.OWNER) return owned.contains(c.id);
         if (c.unlock == Unlock.MEDIA) return owned.contains(c.id) || owned.contains(MEDIA);
@@ -63,9 +65,15 @@ public final class Entitlements {
     /**
      * Whether the cosmetics menu lists it: everything that can be had (free, Supporter, store), plus
      * given cosmetics (Founder, Media, Owner) only for players who have them. Others only ever see
-     * those on someone wearing them.
+     * those on someone wearing them. Seasonal cosmetics are listed for everyone during their season,
+     * and afterwards only for players who kept one.
      */
     public boolean listed(Cosmetic c) {
+        return listed(c, System.currentTimeMillis());
+    }
+
+    public boolean listed(Cosmetic c, long now) {
+        if (c.season() != null) return c.season().active(now) || owns(c);
         return c.unlock.sold() || owns(c);
     }
 

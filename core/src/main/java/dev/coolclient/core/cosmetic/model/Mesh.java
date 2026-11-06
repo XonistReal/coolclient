@@ -78,6 +78,45 @@ public final class Mesh {
         }
     }
 
+    /** Ellipsoid around (cx, cy, cz), lit from above (-Y is up). */
+    public static void ellipsoid(ModelRenderer mr, float cx, float cy, float cz, float rx, float ry, float rz,
+                                 int segments, int rings, int c) {
+        for (int i = 0; i < rings; i++) {
+            double p0 = Math.PI * i / rings, p1 = Math.PI * (i + 1) / rings;
+            int sc = shade(c, 1.08f - 0.4f * (i + 0.5f) / rings);
+            for (int j = 0; j < segments; j++) {
+                double a0 = Math.PI * 2 * j / segments, a1 = Math.PI * 2 * (j + 1) / segments;
+                quad(mr,
+                        cx + rx * (float) (Math.sin(p0) * Math.cos(a0)), cy - ry * (float) Math.cos(p0), cz + rz * (float) (Math.sin(p0) * Math.sin(a0)),
+                        cx + rx * (float) (Math.sin(p1) * Math.cos(a0)), cy - ry * (float) Math.cos(p1), cz + rz * (float) (Math.sin(p1) * Math.sin(a0)),
+                        cx + rx * (float) (Math.sin(p1) * Math.cos(a1)), cy - ry * (float) Math.cos(p1), cz + rz * (float) (Math.sin(p1) * Math.sin(a1)),
+                        cx + rx * (float) (Math.sin(p0) * Math.cos(a1)), cy - ry * (float) Math.cos(p0), cz + rz * (float) (Math.sin(p0) * Math.sin(a1)),
+                        sc);
+            }
+        }
+    }
+
+    /** Round tube around the Y axis from radius r1 at y1 to r2 at y2 (a cone when they differ). */
+    public static void tube(ModelRenderer mr, float y1, float r1, float y2, float r2, int segments, int c1, int c2) {
+        for (int i = 0; i < segments; i++) {
+            double a0 = Math.PI * 2 * i / segments, a1 = Math.PI * 2 * (i + 1) / segments;
+            float c0 = (float) Math.cos(a0), s0 = (float) Math.sin(a0), cc = (float) Math.cos(a1), ss = (float) Math.sin(a1);
+            // Faces turned away from the light (+x, +z) a little darker.
+            float k = 0.86f + 0.14f * (float) Math.cos((a0 + a1) / 2 + Math.PI * 0.75);
+            quad(mr, c0 * r1, y1, s0 * r1, c0 * r2, y2, s0 * r2, cc * r2, y2, ss * r2, cc * r1, y1, ss * r1,
+                    shade(c1, k), shade(c2, k), shade(c2, k), shade(c1, k));
+        }
+    }
+
+    /** Flat ring around the Y axis at height y (a disc when inner is 0). */
+    public static void ring(ModelRenderer mr, float y, float inner, float outer, int segments, int c) {
+        for (int i = 0; i < segments; i++) {
+            double a0 = Math.PI * 2 * i / segments, a1 = Math.PI * 2 * (i + 1) / segments;
+            float c0 = (float) Math.cos(a0), s0 = (float) Math.sin(a0), cc = (float) Math.cos(a1), ss = (float) Math.sin(a1);
+            quad(mr, c0 * outer, y, s0 * outer, c0 * inner, y, s0 * inner, cc * inner, y, ss * inner, cc * outer, y, ss * outer, c);
+        }
+    }
+
     private static float[] torusPoint(float r, float t, double a, double b) {
         float rr = r + t * (float) Math.cos(b);
         return new float[]{rr * (float) Math.cos(a), t * (float) Math.sin(b), rr * (float) Math.sin(a)};

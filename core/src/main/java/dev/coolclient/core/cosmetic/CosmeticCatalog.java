@@ -17,6 +17,14 @@ public final class CosmeticCatalog {
     private static final Map<String, Cosmetic> ALL = new LinkedHashMap<String, Cosmetic>();
 
     static {
+        // Thanksgiving drop: free every November, and yours to keep once you've worn it.
+        add(new CapeCosmetic("cape_autumn", "Autumn", "Maple leaves tumbling down on a warm afternoon.", Rarity.RARE, CapeStyles.AUTUMN, 0xFFF29A1F, false, true, Unlock.FREE), Season.THANKSGIVING);
+        add(new CapeCosmetic("cape_gobbler", "Gobbler", "A proud turkey showing off its tail. Gobbles now and then.", Rarity.EPIC, CapeStyles.GOBBLER, 0xFFE0731F, false, true, Unlock.FREE), Season.THANKSGIVING);
+        add(new CapeCosmetic("cape_harvestmoon", "Harvest Moon", "A big orange moon over the fields, geese heading south.", Rarity.LEGENDARY, CapeStyles.HARVEST_MOON, 0xFFFF9A3C, false, true, Unlock.FREE), Season.THANKSGIVING);
+        add(new HeadCosmetics.PilgrimHat("hat_pilgrim", "Pilgrim Hat", Rarity.RARE, 0xFF26262E), Season.THANKSGIVING);
+        add(new HeadCosmetics.TurkeyHat("hat_turkey", "Turkey Hat", Rarity.EPIC, 0xFF7A4520), Season.THANKSGIVING);
+        add(new AuraCosmetic("aura_leaves", "Falling Leaves", "Your own little autumn.", Rarity.RARE, AuraCosmetic.Style.LEAVES, 0xFFF29A1F, Unlock.FREE), Season.THANKSGIVING);
+
         // Capes
         add(new CapeCosmetic("cape_aurora", "Aurora Borealis", "Northern lights dancing over a starry sky.", Rarity.MYTHIC, CapeStyles.AURORA, 0xFF2DE2C1, false, true));
         add(new CapeCosmetic("cape_logo", "Cool Emblem", "The official Cool Client cape.", Rarity.LEGENDARY, CapeStyles.COOL_LOGO, 0xFF2DE2C1, false, true));
@@ -71,6 +79,11 @@ public final class CosmeticCatalog {
     private CosmeticCatalog() {}
 
     private static void add(Cosmetic c) { ALL.put(c.id, c); }
+
+    private static void add(Cosmetic c, Season season) {
+        c.in(season);
+        add(c);
+    }
 
     public static Cosmetic get(String id) { return ALL.get(id); }
 
