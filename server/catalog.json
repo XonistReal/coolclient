@@ -1,7 +1,7 @@
 {
-  "_comment": "Unlock tier per cosmetic: free, supporter (Supporter rank), store (sold alone, or with Supporter+), exclusive (never sold; granted by the server), media (never sold; comes with the Media rank for creators) or owner (only the project owner's Owner rank). Seasonal cosmetics (see seasonal) come out every year between their season's from and to dates (UTC, MM-DD): equipping one while signed in during the season keeps it for good, and outside the season only players who kept one show it. Keep in sync with Unlock and Season in core; CatalogSyncTest checks it.",
+  "_comment": "Unlock tier per cosmetic: free, supporter (Supporter rank), store (sold alone, or with Supporter+), exclusive (never sold; granted by the server), media (never sold; comes with the Media rank for creators) or owner (only the project owner's Owner rank). Seasonal cosmetics (see seasonal) come out every year between their season's from and to dates (UTC, MM-DD): equipping one while signed in during the season keeps it for good, and outside the season only players who kept one show it. Keep in sync with Unlock and Season in core; CatalogSyncTest checks it. Cosmetics in remote are delivered by the server (no mod update): their files live in public/cosmetics/, and each one still needs its tier above (and its season in seasonal). See COSMETICS.md.",
   "seasons": {
-    "thanksgiving": { "name": "Thanksgiving", "from": "11-01", "to": "11-30" }
+    "thanksgiving": { "name": "Thanksgiving", "color": "#FF9A3C", "from": "11-01", "to": "11-30" }
   },
   "seasonal": {
     "cape_autumn": "thanksgiving",
@@ -9,7 +9,31 @@
     "cape_harvestmoon": "thanksgiving",
     "hat_pilgrim": "thanksgiving",
     "hat_turkey": "thanksgiving",
-    "aura_leaves": "thanksgiving"
+    "aura_leaves": "thanksgiving",
+    "cape_flannel": "thanksgiving",
+    "hat_pumpkin": "thanksgiving"
+  },
+  "remote": {
+    "cape_flannel": {
+      "type": "CAPE",
+      "name": "Cozy Flannel",
+      "description": "Warm plaid for cold November nights.",
+      "rarity": "RARE",
+      "color": "#B3261E",
+      "image": "capes/flannel.png",
+      "frames": 12,
+      "fps": 8
+    },
+    "hat_pumpkin": {
+      "type": "HAT",
+      "name": "Pumpkin Hat",
+      "description": "Fresh from the patch.",
+      "rarity": "EPIC",
+      "color": "#E8731E",
+      "model": "models/pumpkin_hat.json",
+      "texture": "models/pumpkin_hat.png",
+      "sway": 3
+    }
   },
   "cosmetics": {
     "cape_aurora": "store",
@@ -55,6 +79,8 @@
     "aura_snow": "free",
     "aura_hearts": "free",
     "aura_orbit": "supporter",
-    "aura_leaves": "free"
+    "aura_leaves": "free",
+    "cape_flannel": "free",
+    "hat_pumpkin": "free"
   }
 }

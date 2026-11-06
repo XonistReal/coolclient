@@ -189,6 +189,29 @@ public final class Renderer21 implements GuiRenderer {
         }
     }
 
+    @Override
+    public void drawModel(float x, float y, float scale, float yaw, float pitch,
+                          java.util.function.Consumer<dev.coolclient.core.api.ModelRenderer> draw) {
+        g.flush();
+        com.mojang.blaze3d.vertex.PoseStack ps = g.pose();
+        ps.pushPose();
+        ps.translate(x, y, 150f);
+        ps.scale(scale, scale, -scale);
+        ps.mulPose(new Quaternionf().rotateX((float) Math.toRadians(pitch)));
+        ps.mulPose(new Quaternionf().rotateY((float) Math.toRadians(yaw)));
+        com.mojang.blaze3d.platform.Lighting.setupForEntityInInventory();
+        net.minecraft.client.renderer.MultiBufferSource.BufferSource buffers = Minecraft.getInstance().renderBuffers().bufferSource();
+        ModelRenderer21 mr = new ModelRenderer21();
+        mr.setup(ps, buffers, 0xF000F0);
+        try {
+            draw.accept(mr);
+        } finally {
+            buffers.endBatch();
+            com.mojang.blaze3d.platform.Lighting.setupFor3DItems();
+            ps.popPose();
+        }
+    }
+
     @Override public void push() { g.pose().pushPose(); }
 
     @Override public void pop() { g.pose().popPose(); }

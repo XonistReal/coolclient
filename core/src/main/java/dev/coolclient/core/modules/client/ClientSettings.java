@@ -34,6 +34,14 @@ public final class ClientSettings extends Module {
     public final ModeSetting uiFont = add(new ModeSetting("Interface Font", "Segoe UI",
             "Segoe UI", "Inter", "Arial", "Verdana", "Tahoma", "Trebuchet MS", "Calibri", "SansSerif"));
     public final BoolSetting customMainMenu = add(new BoolSetting("Custom Main Menu", true));
+    public final ModeSetting mainMenuLayout = add(new ModeSetting("Main Menu Layout", "Centered", "Centered", "Showcase")
+            .describe("Showcase: buttons on the left, the current cosmetic drop on the right"));
+    public final ModeSetting showcaseSpotlight = add(new ModeSetting("Showcase Spotlight", "New Drops", "New Drops", "Your Skin")
+            .describe("What the Showcase title screen shows on the right"));
+    public final ModeSetting menuLayout = add(new ModeSetting("Mod Menu Layout", "Sidebar", "Sidebar", "Tabs", "Compact")
+            .describe("Sidebar: categories down the side. Tabs: big tiles and favourites. Compact: a list"));
+    /** Mod names marked with a heart in the Tabs layout (comma-separated; not shown as a setting). */
+    public final TextSetting favouriteMods = add(new TextSetting("Favourite Mods", "", 4096).visibleWhen(() -> false));
     public final BoolSetting hudSnapping = add(new BoolSetting("HUD Snapping", true));
     public final BoolSetting showBadges = add(new BoolSetting("Client User Badges", true)
             .describe("Show the Cool Client icon next to other Cool Client users"));

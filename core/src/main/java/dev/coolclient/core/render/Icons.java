@@ -17,7 +17,7 @@ public final class Icons {
         GEAR("settings"), SEARCH, CLOSE, CHECK, CHEVRON_LEFT, CHEVRON_RIGHT, CHEVRON_DOWN, PLUS, MINUS, BACK,
         EDIT, LAYOUT, SLIDERS, POWER, USER, GLOBE, CUBE("singleplayer"), MULTIPLAYER("multiplayer"), EXIT,
         RESET("reset_hud"), STAR, SPARKLE, CROWN, EYE, KEYBOARD, PALETTE, FOLDER, GRID("mods"),
-        HANGER("cosmetics"), MOON, PLAY, TERMINAL;
+        HANGER("cosmetics"), MOON, PLAY, TERMINAL, HEART;
 
         final String svg;
 
@@ -228,6 +228,17 @@ public final class Icons {
                 Draw.polyline(r, new float[]{x + s * 0.24f, y + s * 0.36f, x + s * 0.42f, cy, x + s * 0.24f, y + s * 0.64f}, t, c);
                 Draw.line(r, x + s * 0.5f, y + s * 0.64f, x + s * 0.74f, y + s * 0.64f, t, c);
                 break;
+            case HEART: {
+                float hr = s * 0.235f;
+                Draw.circle(r, cx - s * 0.2f, cy - s * 0.1f, hr, c);
+                Draw.circle(r, cx + s * 0.2f, cy - s * 0.1f, hr, c);
+                r.beginTriangles();
+                r.vertex(cx - s * 0.425f, cy - s * 0.02f, c);
+                r.vertex(cx + s * 0.425f, cy - s * 0.02f, c);
+                r.vertex(cx, cy + s * 0.4f, c);
+                r.endTriangles();
+                break;
+            }
             case MOON:
                 Draw.circle(r, cx, cy, s * 0.38f, c);
                 Draw.circle(r, cx + s * 0.16f, cy - s * 0.12f, s * 0.32f, Colors.withAlpha(Theme.PANEL, 255));

@@ -194,6 +194,9 @@ final class SelfTestReel {
         steps.add(orbit("look-hat_turkey", 4.0, 125, 235, "hat_turkey", "aura_leaves", "cape_gobbler"));
         steps.add(orbit("look-hat_pilgrim", 4.0, 125, 235, "hat_pilgrim", "cape_harvestmoon"));
         for (String cape : new String[] {"cape_autumn", "cape_gobbler", "cape_harvestmoon"}) steps.add(orbit(cape, 4.0, -70, 70, cape));
+        // Server-delivered cosmetics (skipped when the server's catalog isn't loaded).
+        steps.add(orbit("look-hat_pumpkin", 4.0, 125, 235, "hat_pumpkin", "cape_flannel"));
+        steps.add(orbit("cape_flannel", 4.0, -70, 70, "cape_flannel"));
 
         // Skies from a floating spectator camera; the edit pans across the wide frame.
         steps.add(once(() -> {
@@ -1113,7 +1116,10 @@ final class SelfTestReel {
         final CoolClient a = CoolClient.get();
         return clip(slow ? "long-" + name : name, slow ? 8.0 : seconds, () -> {
             for (CosmeticType t : CosmeticType.values()) a.cosmetics().unequip(t);
-            for (String id : ids) a.cosmetics().equip(CosmeticCatalog.get(id));
+            for (String id : ids) {
+                dev.coolclient.core.cosmetic.Cosmetic c = CosmeticCatalog.get(id);
+                if (c != null) a.cosmetics().equip(c);
+            }
         }, t -> {
             Freelook fl = a.modules().get(Freelook.class);
             // Slow turns go at an even speed so any stretch of the clip works in the edit.

@@ -97,6 +97,24 @@ final class AppearancePage {
         }
         yy += rows(presets.size(), cols) * (ch + GAP) + 10;
 
+        // Layouts of the mod menu and the title screen
+        yy = section(r, "Layout", "How the mod menu and the title screen are arranged", x, yy, alpha);
+        final String[] layouts = {"Sidebar", "Tabs", "Compact", "Centered", "Showcase"};
+        int lcols = Math.max(2, (int) ((w + GAP) / (96 + GAP)));
+        float lw = (w - GAP * (lcols - 1)) / lcols, lh = 62;
+        for (int i = 0; i < layouts.length; i++) {
+            final boolean menu = i < 3;
+            final String name = layouts[i];
+            float cx = x + (i % lcols) * (lw + GAP), cy = yy + (i / lcols) * (lh + GAP);
+            boolean active = menu ? client.menuLayout.is(name) : client.mainMenuLayout.is(name);
+            layoutCard(r, i, (menu ? "Mods: " : "Title: ") + name, active, cx, cy, lw, lh, mx, my, inView, alpha);
+            hit(cx, cy, lw, lh, () -> {
+                (menu ? client.menuLayout : client.mainMenuLayout).set(name);
+                CoolClient.get().config().markDirty();
+            });
+        }
+        yy += rows(layouts.length, lcols) * (lh + GAP) + 10;
+
         // Menu backgrounds
         yy = section(r, "Menu Background", "Animated shaders behind the main menu and the launcher", x, yy, alpha);
         Backgrounds.Style[] styles = Backgrounds.Style.values();
@@ -245,6 +263,58 @@ final class AppearancePage {
             int top = s == null ? 0xFF78A7FF : s.fog;
             Draw.roundedGradient(r, x, y, w, h, 7, Colors.fade(Colors.withAlpha(top, 255), alpha),
                     Colors.fade(Colors.lerp(top | 0xFF000000, 0xFF000000, 0.6f), alpha), GpuDraw.GRAD_V);
+        }
+        label(r, name, x, y, w, h, alpha);
+        if (active) activeRing(r, x, y, w, h, alpha);
+        else Draw.roundedOutline(r, x, y, w, h, 7, 0.75f, Colors.fade(Theme.BORDER, alpha));
+    }
+
+    /** A little drawing of a layout: 0-2 are mod menu layouts (Sidebar, Tabs, Compact), 3-4 title screens (Centered, Showcase). */
+    private void layoutCard(GuiRenderer r, int kind, String name, boolean active, float x, float y, float w, float h,
+                            float mx, float my, boolean inView, float alpha) {
+        float hv = lift(r, "layout:" + kind, x, y, w, h, mx, my, inView, alpha);
+        y -= hv * 1.5f;
+        Draw.rounded(r, x, y, w, h, 7, Colors.fade(Theme.SURFACE, alpha));
+        float px = x + 6, py = y + 6, pw = w - 12, ph = h - 26;
+        int bar = Colors.fade(Theme.highlight(40), alpha), dim = Colors.fade(Theme.highlight(18), alpha);
+        int acc = Colors.fade(Theme.accent(0.3f), alpha);
+        Draw.rounded(r, px, py, pw, ph, 4, Colors.fade(Theme.light ? 0x10000000 : 0x40000000, alpha));
+        if (kind == 0 || kind == 2) {
+            float sw = pw * 0.24f;
+            Draw.rounded(r, px, py, sw, ph, 4, 0, 0, 4, dim);
+            for (int i = 0; i < 5; i++) Draw.rounded(r, px + 3, py + 4 + i * 6, sw - 6, 3, 1.5f, i == 0 ? acc : bar);
+            float cx = px + sw + 4, cw = pw - sw - 7;
+            if (kind == 0) {
+                for (int i = 0; i < 4; i++) {
+                    float tw = (cw - 3) / 2f, th = (ph - 11) / 2f;
+                    Draw.rounded(r, cx + (i % 2) * (tw + 3), py + 4 + (i / 2) * (th + 3), tw, th, 2, bar);
+                }
+            } else {
+                for (int i = 0; i < 5; i++) {
+                    float ry = py + 4 + i * 6;
+                    Draw.rounded(r, cx, ry, cw, 4.5f, 1.5f, bar);
+                    Draw.rounded(r, cx + cw - 7, ry + 1, 5, 2.5f, 1.25f, i % 2 == 0 ? acc : dim);
+                }
+            }
+        } else if (kind == 1) {
+            for (int i = 0; i < 4; i++) Draw.rounded(r, px + 3 + i * 13, py + 3, 11, 4, 2, i == 0 ? acc : bar);
+            for (int i = 0; i < 5; i++) Draw.rounded(r, px + 3 + i * 9, py + 10, 7, 3, 1.5f, dim);
+            float tw = (pw - 6 - 6) / 3f, th = (ph - 19 - 3) / 2f;
+            for (int i = 0; i < 6; i++) {
+                float tx = px + 3 + (i % 3) * (tw + 3), ty = py + 16 + (i / 3) * (th + 3);
+                Draw.rounded(r, tx, ty, tw, th, 2, bar);
+                Draw.circle(r, tx + tw / 2f, ty + th / 2f, Math.min(tw, th) * 0.22f, i % 2 == 0 ? acc : dim);
+            }
+        } else if (kind == 3) {
+            Draw.rounded(r, px + pw / 2f - 12, py + 5, 24, 5, 2.5f, acc);
+            for (int i = 0; i < 3; i++) Draw.rounded(r, px + pw / 2f - 15, py + 14 + i * 6, 30, 4, 2, i == 0 ? acc : bar);
+        } else {
+            Draw.rounded(r, px + 4, py + 5, 18, 5, 2.5f, acc);
+            for (int i = 0; i < 4; i++) Draw.rounded(r, px + 4, py + 13 + i * 5, 22, 3.5f, 1.75f, i == 0 ? acc : bar);
+            Draw.rounded(r, px + 4, py + ph - 6, 16, 3, 1.5f, bar);
+            float cw = pw * 0.3f, cx = px + pw - cw - 4;
+            Draw.rounded(r, cx, py + 4, cw, ph - 8, 3, bar);
+            Draw.rounded(r, cx + cw / 2f - 4, py + 9, 8, ph - 20, 1.5f, acc);
         }
         label(r, name, x, y, w, h, alpha);
         if (active) activeRing(r, x, y, w, h, alpha);

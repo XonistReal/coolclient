@@ -20,6 +20,7 @@ cosmetics: **sell what other players see, not what the client can do.**
 | Server: enforcement, store info, admin grants, Tebex webhook, generic signed webhook | `server/app.js` (Node: `server.js`, Cloudflare: `worker/`) |
 | Command-line grants for donors, giveaways and creators | `server/admin.js` |
 | Test that the client and server tier lists match | `core/src/test/.../CatalogSyncTest.java` |
+| Cosmetics and seasons from the server, with no mod update (how to add one: `COSMETICS.md`) | `core/.../cosmetic/RemoteCatalog.java`, `server/catalog.json` (`remote`), `server/public/cosmetics/` |
 
 Default tiers come from rarity: common and rare are free, epic and legendary come with
 **Supporter**, mythic items are sold individually or come with **Supporter+**. To change one,

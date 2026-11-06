@@ -15,6 +15,10 @@
  * wearer owns (catalog.json says which are free). Ownership is granted by an admin call or a
  * signed payment webhook. Exclusive and Media cosmetics are always checked. See MONETIZATION.md.
  *
+ * Server-delivered cosmetics (catalog.json "remote"): the client downloads their definitions from
+ * /api/catalog and their images and models from /cosmetics/ (public/cosmetics/), so adding one
+ * needs no mod update. See COSMETICS.md.
+ *
  * Seasonal drops (catalog.json "seasons"): a seasonal cosmetic comes back every year during its
  * season. Equipping one while signed in during the season keeps it for good; outside the season
  * only players who kept one show it. An admin can give a whole drop at any time by granting the
@@ -40,8 +44,10 @@ const CATALOG = CATALOG_FILE.cosmetics;
 const SEASONS = CATALOG_FILE.seasons || {};
 /** Cosmetic id -> season id, for cosmetics that belong to a seasonal drop. */
 const SEASONAL = CATALOG_FILE.seasonal || {};
+/** Cosmetics the server delivers (definitions; their files are in public/cosmetics/). */
+const REMOTE = CATALOG_FILE.remote || {};
 
-const VERSION = '0.1.4-beta';
+const VERSION = '0.1.5-beta';
 const FOUNDER_ITEM = 'cape_founder';
 const MEDIA = 'media';
 const OWNER = 'owner';
@@ -508,6 +514,17 @@ function createApp(opts) {
         insecure: INSECURE,
         enforced: ENFORCE,
         founderSlotsLeft: Math.max(0, FOUNDER_LIMIT - (db.founders || 0)),
+      });
+    }
+
+    // What the client needs to show server-delivered cosmetics and seasons without a mod update.
+    if (req.method === 'GET' && p === '/api/catalog') {
+      return ok({
+        version: VERSION,
+        seasons: SEASONS,
+        seasonal: SEASONAL,
+        cosmetics: Object.keys(REMOTE).map((id) => Object.assign({ id, unlock: CATALOG[id] || 'free' }, REMOTE[id])),
+        featured: CATALOG_FILE.featured || null,
       });
     }
 

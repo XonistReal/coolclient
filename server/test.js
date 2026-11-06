@@ -268,7 +268,7 @@ function signed(body) {
   const gift = '55555555-0000-0000-0000-000000000003';
   const giftToken = await signIn('Gifted', gift);
   b = await sl('POST', '/api/admin/grant', { uuid: gift, items: ['thanksgiving', 'not_a_season'] }, 'a');
-  assert.deepStrictEqual(b.entitlements, ['aura_leaves', 'cape_autumn', 'cape_gobbler', 'cape_harvestmoon', 'hat_pilgrim', 'hat_turkey']);
+  assert.deepStrictEqual(b.entitlements, ['aura_leaves', 'cape_autumn', 'cape_flannel', 'cape_gobbler', 'cape_harvestmoon', 'hat_pilgrim', 'hat_pumpkin', 'hat_turkey']);
   assert.deepStrictEqual(b.ignored, ['not_a_season'], 'typos are reported');
   await sl('PUT', '/api/me/loadout', { equipped: { CAPE: 'cape_harvestmoon', HAT: 'hat_turkey' } }, giftToken);
   assert.deepStrictEqual((await sl('GET', '/api/players/' + gift)).loadout.equipped, { CAPE: 'cape_harvestmoon', HAT: 'hat_turkey' }, 'given bundle shows after the season');
@@ -278,11 +278,41 @@ function signed(body) {
   assert.strictEqual(b.pending, true, 'held for a name that has not signed in');
   const ns = '55555555-0000-0000-0000-000000000004';
   await signIn('NeverSignedIn', ns);
-  assert.strictEqual((await sl('GET', '/api/me', undefined, await signIn('NeverSignedIn', ns))).entitlements.length, 6, 'applied on first sign-in');
+  assert.strictEqual((await sl('GET', '/api/me', undefined, await signIn('NeverSignedIn', ns))).entitlements.length, 8, 'applied on first sign-in');
 
   when = Date.UTC(2027, 10, 1); // back next November
   b = await sl('PUT', '/api/me/loadout', { equipped: { CAPE: 'cape_harvestmoon' } }, earlyToken);
   assert.deepStrictEqual(b.claimed, ['cape_harvestmoon'], 'next year: back again');
+
+  // Server-delivered cosmetics: definitions from /api/catalog, files from /cosmetics/.
+  const cat = await sl('GET', '/api/catalog');
+  assert.deepStrictEqual(cat.cosmetics.map((c) => c.id).sort(), ['cape_flannel', 'hat_pumpkin']);
+  const flannel = cat.cosmetics.find((c) => c.id === 'cape_flannel');
+  assert.strictEqual(flannel.unlock, 'free');
+  assert.strictEqual(flannel.image, 'capes/flannel.png');
+  assert.strictEqual(cat.seasonal.hat_pumpkin, 'thanksgiving');
+  assert.strictEqual(cat.seasons.thanksgiving.to, '11-30');
+  const catalogFile = require('./catalog.json');
+  for (const [id, d] of Object.entries(catalogFile.remote)) {
+    assert.ok(catalogFile.cosmetics[id], id + ' has a tier');
+    for (const f of [d.image, d.model, d.texture].filter(Boolean)) {
+      assert.ok(require('fs').existsSync(require('path').join(__dirname, 'public', 'cosmetics', f)), f + ' exists');
+    }
+  }
+  const files = await start(0, { DATA_DIR: process.env.DATA_DIR + '-static' });
+  try {
+    const base = 'http://127.0.0.1:' + files.address().port;
+    let fr = await fetch(base + '/cosmetics/capes/flannel.png');
+    assert.strictEqual(fr.status, 200);
+    assert.strictEqual(fr.headers.get('content-type'), 'image/png');
+    fr = await fetch(base + '/cosmetics/models/pumpkin_hat.json');
+    assert.strictEqual((await fr.json()).elements.length, 4);
+    for (const bad of ['/cosmetics/../catalog.json', '/cosmetics/%2e%2e/catalog.json', '/cosmetics/nope.png', '/cosmetics/capes/']) {
+      assert.strictEqual((await fetch(base + bad)).status, 404, bad);
+    }
+  } finally {
+    files.close();
+  }
 
   // Real sign-ins: Mojang's answer decides. 204 = not joined (401), an outage or block = 502, 200 = signed in.
   for (const [status, body, expected] of [[204, null, 401], [403, null, 502], [200, { id: '069a79f444e94726a5befca90e38aaf5', name: 'Notch' }, 200]]) {

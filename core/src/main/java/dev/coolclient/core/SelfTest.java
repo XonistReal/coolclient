@@ -93,6 +93,64 @@ public final class SelfTest {
                 case 1:
                     if (frames > 60) {
                         shot("02-mod-menu");
+                        // The other layouts: Tabs and Compact mod menus, then the Showcase title screen.
+                        step = 102;
+                        frames = 0;
+                        a.client().menuLayout.set("Tabs");
+                        a.platform().openScreen(new ModMenuScreen(null));
+                    }
+                    break;
+                case 102:
+                    if (frames > 60) {
+                        shot("02c-mod-menu-tabs");
+                        step = 103;
+                        frames = 0;
+                        a.client().menuLayout.set("Compact");
+                        a.platform().openScreen(new ModMenuScreen(null));
+                    }
+                    break;
+                case 103:
+                    if (frames > 60) {
+                        shot("02d-mod-menu-compact");
+                        step = 104;
+                        frames = 0;
+                        a.client().menuLayout.set("Sidebar");
+                        a.client().mainMenuLayout.set("Showcase");
+                        a.platform().openScreen(new MainMenuScreen());
+                    }
+                    break;
+                case 104:
+                    if (frames > 90) {
+                        shot("01b-main-menu-showcase");
+                        a.client().showcaseSpotlight.set("Your Skin");
+                        step = 105;
+                        frames = 0;
+                    }
+                    break;
+                case 105:
+                    if (frames > 90) {
+                        shot("01c-main-menu-skin");
+                        a.client().showcaseSpotlight.set("New Drops");
+                        a.client().mainMenuLayout.set("Centered");
+                        a.cosmetics().equip(CosmeticCatalog.get("hat_turkey"));
+                        step = 106;
+                        frames = 0;
+                        a.platform().openScreen(dev.coolclient.core.gui.screen.CosmeticsScreen.on(null, dev.coolclient.core.cosmetic.CosmeticType.HAT));
+                    }
+                    break;
+                case 106:
+                    if (frames > 60) {
+                        shot("04b-cosmetics-hats");
+                        step = 107;
+                        frames = 0;
+                        a.platform().openScreen(dev.coolclient.core.gui.screen.CosmeticsScreen.on(null, dev.coolclient.core.cosmetic.CosmeticType.WINGS));
+                    }
+                    break;
+                case 107:
+                    if (frames > 60) {
+                        shot("04c-cosmetics-wings");
+                        a.cosmetics().unequip(dev.coolclient.core.cosmetic.CosmeticType.HAT);
+                        dev.coolclient.core.gui.screen.CosmeticsScreen.on(null, dev.coolclient.core.cosmetic.CosmeticType.CAPE);
                         step = 101;
                         frames = 0;
                         a.platform().openScreen(ModMenuScreen.themes(null));

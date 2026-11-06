@@ -1,6 +1,6 @@
 {
   "name": "coolclient-api",
-  "version": "0.1.4-beta",
+  "version": "0.1.5-beta",
   "private": true,
   "license": "GPL-3.0-only",
   "description": "Cool Client cosmetics, entitlements, presence and news API (zero dependencies; Node or Cloudflare Workers)",

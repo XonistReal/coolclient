@@ -50,20 +50,31 @@ public final class CosmeticsManager {
     private long dirtySince;
 
     private final Entitlements entitlements;
+    private final RemoteCatalog catalog;
 
     public CosmeticsManager(File dir, ApiClient api) {
         this.file = new File(dir, "cosmetics.json");
         this.api = api;
+        this.catalog = new RemoteCatalog(dir, api);
         this.entitlements = new Entitlements(api);
         this.entitlements.onLoaded(this::dropUnowned);
     }
 
-    /** What the cosmetics menu shows for a slot (see {@link Entitlements#listed}). */
+    /** What the cosmetics menu shows for a slot (see {@link Entitlements#listed}), the current drop first. */
     public List<Cosmetic> available(CosmeticType type) {
         List<Cosmetic> out = new ArrayList<Cosmetic>();
-        for (Cosmetic c : CosmeticCatalog.ofType(type)) if (entitlements.listed(c)) out.add(c);
+        List<Cosmetic> rest = new ArrayList<Cosmetic>();
+        for (Cosmetic c : CosmeticCatalog.ofType(type)) {
+            if (!entitlements.listed(c)) continue;
+            if (c.season() != null && c.season().active()) out.add(c);
+            else rest.add(c);
+        }
+        out.addAll(rest);
         return out;
     }
+
+    /** Cosmetics and seasons from the server (no mod update needed for new ones). */
+    public RemoteCatalog catalog() { return catalog; }
 
     /** Once the server has said what you own, takes off given cosmetics (Founder, Media, Owner) you don't have. */
     private void dropUnowned() {
@@ -241,6 +252,7 @@ public final class CosmeticsManager {
     public void tick() {
         long now = Time.millis();
         entitlements.refresh(false);
+        catalog.tick();
         if (dirty && now - dirtySince > 750) {
             dirty = false;
             saveNow();
@@ -312,6 +324,7 @@ public final class CosmeticsManager {
     // ------------------------------------------------------------------ persistence
 
     public void load() {
+        catalog.loadCached();
         Map<String, Object> m = ConfigManager.readJson(file);
         if (m == null) {
             // Start new players with something to show off.

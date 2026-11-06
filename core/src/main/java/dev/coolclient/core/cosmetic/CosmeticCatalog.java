@@ -15,6 +15,8 @@ import java.util.Map;
 /** Every cosmetic in the client. Unlock tiers are in {@link Unlock}; nothing is locked until the server enforces it. */
 public final class CosmeticCatalog {
     private static final Map<String, Cosmetic> ALL = new LinkedHashMap<String, Cosmetic>();
+    /** Ids of cosmetics the server delivered (see {@link RemoteCatalog}). */
+    private static final java.util.Set<String> REMOTE = new java.util.HashSet<String>();
 
     static {
         // Thanksgiving drop: free every November, and yours to keep once you've worn it.
@@ -86,6 +88,15 @@ public final class CosmeticCatalog {
     }
 
     public static Cosmetic get(String id) { return ALL.get(id); }
+
+    /** Adds or replaces a cosmetic the server delivered. */
+    static void register(Cosmetic c) {
+        ALL.put(c.id, c);
+        REMOTE.add(c.id);
+    }
+
+    /** Whether it came from the server rather than being built into the mod. */
+    public static boolean remote(String id) { return REMOTE.contains(id); }
 
     public static List<Cosmetic> all() { return Collections.unmodifiableList(new ArrayList<Cosmetic>(ALL.values())); }
 

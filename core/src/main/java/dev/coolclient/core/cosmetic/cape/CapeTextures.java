@@ -23,6 +23,7 @@ public final class CapeTextures {
         final int[] pixels = new int[WIDTH * HEIGHT];
         long lastUsed;
         long lastFrame;
+        int revision;
     }
 
     private final Textures textures;
@@ -37,16 +38,19 @@ public final class CapeTextures {
         String key = cape.id + "#" + (cape.tintable ? Integer.toHexString(tint) : "");
         Entry e = entries.get(key);
         long now = Time.millis();
+        int revision = cape.style.revision();
         if (e == null) {
             e = new Entry();
             paint(e.pixels, cape.style, (float) Time.seconds(), tint);
             e.handle = textures.create("cape/" + cape.id + "_" + Integer.toHexString(tint), WIDTH, HEIGHT, e.pixels, true);
             e.lastFrame = now;
+            e.revision = revision;
             entries.put(key, e);
-        } else if (cape.animated && now - e.lastFrame >= FRAME_MS) {
+        } else if ((cape.animated || revision != e.revision) && now - e.lastFrame >= FRAME_MS) {
             paint(e.pixels, cape.style, (float) Time.seconds(), tint);
             textures.update(e.handle, e.pixels);
             e.lastFrame = now;
+            e.revision = revision;
         }
         e.lastUsed = now;
         return e.handle;

@@ -16,6 +16,8 @@ public final class AuraCosmetic extends Cosmetic {
     private static final int[] LEAF_COLORS = {0xFFE8471C, 0xFFF29A1F, 0xFFF7C843, 0xFFB5301A, 0xFFD9661C};
 
     private final Style style;
+    /** Colours the particles are picked from (server recolours), or null for the style's own. */
+    private int[] palette;
 
     public AuraCosmetic(String id, String name, String description, Rarity rarity, Style style, int color) {
         this(id, name, description, rarity, style, color, Unlock.forRarity(rarity));
@@ -25,6 +27,12 @@ public final class AuraCosmetic extends Cosmetic {
         super(id, name, description, CosmeticType.AURA, rarity, color,
                 style != Style.FLAME && style != Style.SNOW && style != Style.LEAVES, true, unlock);
         this.style = style;
+    }
+
+    /** Gives the particles their own colours (null keeps the style's). */
+    public AuraCosmetic palette(int[] colors) {
+        this.palette = colors == null || colors.length == 0 ? null : colors.clone();
+        return this;
     }
 
     @Override
@@ -68,7 +76,8 @@ public final class AuraCosmetic extends Cosmetic {
                     float lx = (float) Math.cos(a) * r + (float) Math.sin(t * 1.7f + i) * 1.2f;
                     float lz = (float) Math.sin(a) * r;
                     float fade = Math.min(1f, Math.min(life * 6f, (1f - life) * 4f));
-                    int lc = LEAF_COLORS[(int) (h3 * 97) % LEAF_COLORS.length];
+                    int[] leaves = palette != null ? palette : LEAF_COLORS;
+                    int lc = leaves[(int) (h3 * 97) % leaves.length];
                     leaf(mr, lx, -9f + life * 33f, lz, 1.0f + h1 * 0.5f, t * (1.5f + h1 * 2f) + i * 2f, Mesh.alpha(lc, fade));
                     continue;
                 }
@@ -100,6 +109,10 @@ public final class AuraCosmetic extends Cosmetic {
                     c = style == Style.HEARTS ? 0xFFFF4F7A : Colors.lerp(color, 0xFFFFFFFF, h1 * 0.5f);
                     break;
                 }
+            }
+            if (palette != null) {
+                c = style == Style.FLAME && palette.length > 1 ? Colors.lerp(palette[0], palette[1], 1f - alpha)
+                        : palette[(int) (h3 * 97) % palette.length];
             }
             diamond(mr, x, y, z, size, Mesh.alpha(c, alpha));
         }

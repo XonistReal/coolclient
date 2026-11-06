@@ -42,6 +42,30 @@ function readRaw(req) {
   });
 }
 
+const PUBLIC = path.join(__dirname, 'public');
+const TYPES = { '.png': 'image/png', '.json': 'application/json' };
+
+/** Serves cosmetic files (public/cosmetics/) at /cosmetics/...; on Cloudflare the worker's static assets do this. */
+function serveStatic(req, res) {
+  const url = new URL(req.url, 'http://localhost');
+  if ((req.method !== 'GET' && req.method !== 'HEAD') || !url.pathname.startsWith('/cosmetics/')) return false;
+  let file;
+  try {
+    file = path.join(PUBLIC, decodeURIComponent(url.pathname));
+  } catch (e) {
+    file = '';
+  }
+  const type = TYPES[path.extname(file).toLowerCase()];
+  if (!type || !file.startsWith(path.join(PUBLIC, 'cosmetics') + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
+    send(res, 404, { error: 'Not found' });
+    return true;
+  }
+  const data = fs.readFileSync(file);
+  res.writeHead(200, { 'Content-Type': type, 'Content-Length': data.length, 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300' });
+  res.end(req.method === 'HEAD' ? undefined : data);
+  return true;
+}
+
 function send(res, status, body) {
   const data = JSON.stringify(body);
   res.writeHead(status, Object.assign({ 'Content-Length': Buffer.byteLength(data) }, HEADERS));
@@ -75,6 +99,7 @@ function start(port, env) {
   });
 
   const server = http.createServer(async (req, res) => {
+    if (serveStatic(req, res)) return;
     let raw;
     try {
       raw = await readRaw(req);

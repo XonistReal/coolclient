@@ -6,6 +6,8 @@ import dev.coolclient.core.cosmetic.Cosmetic;
 import dev.coolclient.core.cosmetic.CosmeticType;
 import dev.coolclient.core.cosmetic.CosmeticsManager;
 import dev.coolclient.core.cosmetic.Loadout;
+import dev.coolclient.core.cosmetic.PlayerFigure;
+import dev.coolclient.core.cosmetic.SkinLoader;
 import dev.coolclient.core.cosmetic.Season;
 import dev.coolclient.core.cosmetic.cape.CapeCosmetic;
 import dev.coolclient.core.font.FontRenderer;
@@ -48,6 +50,12 @@ public final class CosmeticsScreen extends UIScreen {
     private float previewYaw = 200f;
     private boolean draggingPreview;
     private float lastMx;
+
+    /** Opens on one slot's tab (the self-test uses it). */
+    public static CosmeticsScreen on(UIScreen parent, CosmeticType t) {
+        rememberedType = t;
+        return new CosmeticsScreen(parent);
+    }
 
     public CosmeticsScreen(UIScreen parent) {
         super(parent);
@@ -212,10 +220,57 @@ public final class CosmeticsScreen extends UIScreen {
             Draw.texture(r, tex, cx - w / 2f, cy - h / 2f, w, h, 1 / 64f, 1 / 32f, 11 / 64f, 17 / 32f, 0xFFFFFFFF, true);
             return;
         }
-        int col = l.color(c);
-        float bob = (float) Math.sin(Time.seconds() * 2 + c.id.hashCode()) * 1.5f;
-        Draw.glow(r, cx - 10, cy - 10 + bob, 20, 20, 10, 10, Colors.withAlpha(col, 60));
-        Icons.draw(r, iconFor(c.type), cx - 12, cy - 12 + bob, 24, Colors.withAlpha(col, 255));
+        drawModelThumb(r, c, cx, cy, l);
+    }
+
+    private final PlayerFigure thumb = new PlayerFigure();
+    private final PlayerFigure stage = new PlayerFigure();
+
+    /** A mannequin (just the head for head cosmetics) wearing the cosmetic, turning slowly. */
+    private void drawModelThumb(GuiRenderer r, Cosmetic c, float cx, float cy, Loadout l) {
+        final PlayerFigure f = thumb;
+        f.wearing.clear();
+        f.wearing.put(c.type, c);
+        f.colors = l;
+        f.skin = 0;
+        f.idle = false;
+        f.headYaw = 0;
+        f.headPitch = 0;
+        float t = (float) Time.seconds();
+        f.time = t;
+        boolean head = c.type == CosmeticType.HAT || c.type == CosmeticType.HALO || c.type == CosmeticType.BANDANA;
+        f.showBody = !head;
+        float top = head ? -8 - Math.max(2.5f, c.headroom()) : -9, bottom = head ? 1 : 25;
+        float span = head ? 15 : c.type == CosmeticType.WINGS ? 36 : 30;
+        float base = c.type == CosmeticType.WINGS ? 155 : c.type == CosmeticType.BANDANA ? -40 : -28;
+        float yaw = base + (float) Math.sin(t * 0.7f + (c.id.hashCode() & 63)) * 18f;
+        float s = Math.min(50f / (bottom - top), 64f / span);
+        final float mid = (top + bottom) / 2f;
+        r.drawModel(cx, cy, s, yaw, head ? 14 : 6, mr -> {
+            mr.translate(0, -mid, 0);
+            f.draw(mr);
+        });
+    }
+
+    /** The figure on the preview stage outside a world: your skin, wearing your loadout plus whatever you're looking at. */
+    private void drawStage(GuiRenderer r, float x, float y, float w, float h) {
+        final PlayerFigure f = stage;
+        f.wear(CoolClient.get().cosmetics().local());
+        if (focused != null) f.wearing.put(focused.type, focused);
+        f.skin = SkinLoader.texture();
+        f.slim = SkinLoader.slim();
+        f.legacySkin = SkinLoader.legacy();
+        f.showBody = true;
+        f.idle = true;
+        f.time = (float) Time.seconds();
+        f.headYaw = 0;
+        f.headPitch = 0;
+        Cosmetic hat = f.wearing.get(CosmeticType.HAT), halo = f.wearing.get(CosmeticType.HALO);
+        float top = -9 - Math.max(hat != null ? hat.headroom() : 0, halo != null ? halo.headroom() : 0);
+        float s = Math.min((h - 10) / (25 - top), (w - 10) / 30f);
+        float feet = y + h - 4;
+        Draw.shadow(r, x + w / 2f - 8 * s / 2f, feet - 3, 8 * s, 4, 4, 10, 0x50000000);
+        r.drawModel(x + w / 2f, feet - 24 * s, s, previewYaw, 4, f::draw);
     }
 
     private void drawPreview(GuiRenderer r, float mx, float my) {
@@ -233,15 +288,11 @@ public final class CosmeticsScreen extends UIScreen {
             Draw.roundedGradient(r, x + 8, y + 8, w - 16, stageH, 6, Colors.withAlpha(Theme.accent(0f), 30), 0x00000000, false);
             r.playerPreview(x + w / 2f, y + stageH - 6, 52, previewYaw, 0);
             Fonts.small().drawCentered(r, "Drag to rotate", x + w / 2f, y + stageH + 2, Theme.TEXT_FAINT, false);
-        } else if (focused instanceof CapeCosmetic) {
-            Loadout l = CoolClient.get().cosmetics().local();
-            int tex = CoolClient.get().cosmetics().capeTexture((CapeCosmetic) focused, l.color(focused));
-            float chh = Math.min(96, stageH - 20), cw = chh / 1.6f;
-            Draw.shadow(r, x + (w - cw) / 2f, y + 18, cw, chh, 3, 10, 0x70000000);
-            Draw.texture(r, tex, x + (w - cw) / 2f, y + 18, cw, chh, 1 / 64f, 1 / 32f, 11 / 64f, 17 / 32f, 0xFFFFFFFF, true);
         } else {
-            Fonts.small().drawCentered(r, "Join a world for a", x + w / 2f, y + 56, Theme.TEXT_FAINT, false);
-            Fonts.small().drawCentered(r, "live 3D preview", x + w / 2f, y + 66, Theme.TEXT_FAINT, false);
+            // No world (title screen): draw the figure ourselves.
+            Draw.roundedGradient(r, x + 8, y + 8, w - 16, stageH, 6, Colors.withAlpha(Theme.accent(0f), 30), 0x00000000, false);
+            drawStage(r, x + 8, y + 10, w - 16, stageH - 8);
+            Fonts.small().drawCentered(r, "Drag to rotate", x + w / 2f, y + stageH + 2, Theme.TEXT_FAINT, false);
         }
 
         if (focused == null) return;

@@ -31,10 +31,33 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/** The CoolClient mod menu: categories, searchable module cards and per-module settings. */
+/**
+ * The CoolClient mod menu: categories, searchable module cards and per-module settings, in one of
+ * three layouts (Client settings, "Mod Menu Layout"): Sidebar (categories down the side, cards),
+ * Tabs (a tab bar, category chips, big tiles with favourites) and Compact (a dense list).
+ */
 public final class ModMenuScreen extends UIScreen {
     private static final float SIDEBAR = 116;
     private static final float HEADER = 34;
+    /** Tabs layout: where the content starts below the tab bar and the chip row. */
+    private static final float TABS_TOP = 64;
+
+    private enum Layout { SIDEBAR, TABS, COMPACT }
+
+    /** A clickable area recorded while drawing (left and right click actions). */
+    private static final class Hit {
+        final float x, y, w, h;
+        final Runnable left, right;
+
+        Hit(float x, float y, float w, float h, Runnable left, Runnable right) {
+            this.x = x;
+            this.y = y;
+            this.w = w;
+            this.h = h;
+            this.left = left;
+            this.right = right;
+        }
+    }
     private static final String THEMES = "themes";
     private static Category rememberedCategory;
 
@@ -56,6 +79,12 @@ public final class ModMenuScreen extends UIScreen {
     private float px, py, pw, ph;
     private float navH = 17;
     private boolean showFooter = true;
+    private Layout style = Layout.SIDEBAR;
+    private boolean favouritesOnly;
+    /** Tabs layout on a narrow window: tabs show only their icons. */
+    private boolean iconTabs;
+    private final List<Hit> navHits = new ArrayList<Hit>();
+    private final List<Hit> gridHits = new ArrayList<Hit>();
 
     private static final class Row {
         final Setting<?> setting;
@@ -115,10 +144,18 @@ public final class ModMenuScreen extends UIScreen {
 
     // ================================================================== layout
 
+    private static Layout chosenLayout() {
+        String s = CoolClient.get().client().menuLayout.get();
+        return "Tabs".equalsIgnoreCase(s) ? Layout.TABS : "Compact".equalsIgnoreCase(s) ? Layout.COMPACT : Layout.SIDEBAR;
+    }
+
+    private boolean tabs() { return style == Layout.TABS; }
+
     @Override
     protected void layout() {
-        pw = Math.min(width - 24, 600);
-        ph = Math.min(height - 24, 360);
+        style = chosenLayout();
+        pw = Math.min(width - 24, tabs() ? 680 : style == Layout.COMPACT ? 560 : 600);
+        ph = Math.min(height - 24, tabs() ? 380 : 360);
         px = (width - pw) / 2f;
         py = (height - ph) / 2f;
         // 10 nav entries + a divider; shrink them (and drop the footer) on short screens.
@@ -129,13 +166,13 @@ public final class ModMenuScreen extends UIScreen {
         navH = MathUtil.clamp(step - 2, 11, 17);
     }
 
-    private float contentX() { return px + SIDEBAR + 12; }
+    private float contentX() { return tabs() ? px + 12 : px + SIDEBAR + 12; }
 
-    private float contentW() { return pw - SIDEBAR - 24; }
+    private float contentW() { return tabs() ? pw - 24 : pw - SIDEBAR - 24; }
 
-    private float contentY() { return py + HEADER + 10; }
+    private float contentY() { return tabs() ? py + TABS_TOP : py + HEADER + 10; }
 
-    private float contentH() { return ph - HEADER - 18; }
+    private float contentH() { return tabs() ? ph - TABS_TOP - 10 : ph - HEADER - 18; }
 
     // ================================================================== rendering
 
@@ -143,16 +180,22 @@ public final class ModMenuScreen extends UIScreen {
     public void render(GuiRenderer r, float mx, float my, float delta) {
         float open = openProgress();
         layout();
+        navHits.clear();
+        gridHits.clear();
         py += (1f - open) * 14f;
         Draw.rect(r, 0, 0, width, height, Colors.fade(Theme.BACKDROP, open));
         Draw.beginPanels(r);
         Draw.shadow(r, px, py, pw, ph, 10, 24, Colors.fade(0x90000000, open));
         Draw.panel(r, px, py, pw, ph, 10, open);
-        Draw.rounded(r, px, py, SIDEBAR, ph, 10, 0, 0, 10, Colors.fade(Theme.light ? 0x0C000000 : 0x40000000, open));
+        if (!tabs()) Draw.rounded(r, px, py, SIDEBAR, ph, 10, 0, 0, 10, Colors.fade(Theme.light ? 0x0C000000 : 0x40000000, open));
         Draw.roundedOutline(r, px, py, pw, ph, 10, 0.75f, Colors.fade(Theme.BORDER, open));
 
-        drawSidebar(r, mx, my);
-        drawHeader(r, mx, my);
+        if (tabs()) {
+            drawTopBar(r, mx, my);
+        } else {
+            drawSidebar(r, mx, my);
+            drawHeader(r, mx, my);
+        }
 
         if (themesPage) {
             appearance.draw(r, contentX(), contentY(), contentW(), contentH(), mx, my, open);
@@ -243,6 +286,129 @@ public final class ModMenuScreen extends UIScreen {
         Draw.rect(r, x, py + HEADER + 2, w, 0.5f, Theme.BORDER);
     }
 
+    // ------------------------------------------------------------------ Tabs layout: tab bar and chips
+
+    private void drawTopBar(GuiRenderer r, float mx, float my) {
+        FontRenderer big = Fonts.get(13f);
+        String logo = "COOL";
+        float lx = px + 14, ly = py + 12;
+        for (int i = 0; i < logo.length(); i++) {
+            String ch = String.valueOf(logo.charAt(i));
+            big.draw(r, ch, lx, ly, Theme.accent(i / (float) (logo.length() - 1)), false);
+            lx += big.width(ch) + 0.6f;
+        }
+        float x = lx + 14, y = py + 9, h = 20;
+        // On narrow windows the tabs drop their labels so they don't run into Edit HUD.
+        FontRenderer bf = Fonts.body();
+        float ew = bf.width("Edit HUD") + 30;
+        float labelled = 4 * 35 + bf.width("Mods") + bf.width("Cosmetics") + bf.width("Themes") + bf.width("Settings");
+        iconTabs = x + labelled > px + pw - 12 - h - 6 - ew - 8;
+        boolean settingsOpen = !themesPage && page.target() == 1f && selected instanceof ClientSettings;
+        x = tab(r, mx, my, "Mods", Icons.Icon.GRID, !themesPage && !settingsOpen, x, y, h, () -> {
+            themesPage = false;
+            if (page.target() == 1f) page.target(0f);
+            if (category == Category.CLIENT) category = rememberedCategory;
+        });
+        x = tab(r, mx, my, "Cosmetics", Icons.Icon.HANGER, false, x, y, h,
+                () -> CoolClient.get().platform().openScreen(new CosmeticsScreen(this)));
+        x = tab(r, mx, my, "Themes", Icons.Icon.PALETTE, themesPage, x, y, h, this::openThemes);
+        tab(r, mx, my, "Settings", Icons.Icon.GEAR, settingsOpen, x, y, h, () -> {
+            themesPage = false;
+            category = Category.CLIENT;
+            openSettings(CoolClient.get().client());
+        });
+
+        // Right: Edit HUD and close.
+        float cx = px + pw - 12 - h;
+        boolean closeHot = MathUtil.inside(mx, my, cx, y, h, h);
+        Draw.rounded(r, cx, y, h, h, 6, closeHot ? Colors.withAlpha(Theme.DANGER, 200) : Theme.SURFACE);
+        Icons.draw(r, Icons.Icon.CLOSE, cx + 5, y + 5, 10, closeHot ? 0xFFFFFFFF : Theme.TEXT_DIM);
+        navHits.add(new Hit(cx, y, h, h, this::close, null));
+        tab(r, mx, my, "Edit HUD", Icons.Icon.LAYOUT, false, cx - 6 - ew, y, h, () -> {
+            if (parent instanceof HudEditorScreen) close();
+            else CoolClient.get().platform().openScreen(new HudEditorScreen(null));
+        });
+        Draw.rect(r, px + 12, py + 35, pw - 24, 0.5f, Theme.BORDER);
+
+        // Second row: category chips and search on the grid; a title elsewhere.
+        float ry = py + 41;
+        if (themesPage || (selected != null && page.target() == 1f)) {
+            Fonts.title().draw(r, themesPage ? "Themes" : selected.name(), contentX(), ry + 2, Theme.TEXT, false);
+            return;
+        }
+        float searchW = Math.min(140, contentW() * 0.3f);
+        search.setBounds(contentX() + contentW() - searchW, ry, searchW, 16);
+        search.render(r, mx, my);
+        float maxX = contentX() + contentW() - searchW - 8;
+        boolean searching = !search.text().isEmpty();
+        float cxx = chip(r, mx, my, "All", null, !searching && !favouritesOnly && category == null, contentX(), ry, maxX, () -> selectCategory(null));
+        cxx = chip(r, mx, my, "Favourites", Icons.Icon.HEART, !searching && favouritesOnly, cxx, ry, maxX, () -> {
+            selectCategory(null);
+            favouritesOnly = true;
+        });
+        for (final Category c : Category.values()) {
+            if (c == Category.CLIENT) continue;
+            cxx = chip(r, mx, my, c.displayName, null, !searching && !favouritesOnly && category == c, cxx, ry, maxX, () -> selectCategory(c));
+        }
+    }
+
+    private float tab(GuiRenderer r, float mx, float my, String label, Icons.Icon icon, boolean active,
+                      float x, float y, float h, Runnable action) {
+        FontRenderer f = Fonts.body();
+        boolean iconOnly = iconTabs && !"Edit HUD".equals(label);
+        float w = iconOnly ? 28 : f.width(label) + 30;
+        boolean hot = MathUtil.inside(mx, my, x, y, w, h);
+        float hv = hover("tab:" + label, hot).get();
+        if (active) Draw.roundedGradient(r, x, y, w, h, 6, Theme.accent(0f), Theme.accent(1f), true);
+        else Draw.rounded(r, x, y, w, h, 6, Colors.lerp(Theme.SURFACE, Theme.SURFACE_HOVER, hv));
+        int c = active ? Theme.ON_ACCENT : Colors.lerp(Theme.TEXT_DIM, Theme.TEXT, hv);
+        Icons.draw(r, icon, x + 9, y + (h - 10) / 2f, 10, c);
+        if (!iconOnly) f.draw(r, label, x + 23, y + (h - f.height()) / 2f, c, false);
+        navHits.add(new Hit(x, y, w, h, action, null));
+        return x + w + 5;
+    }
+
+    private float chip(GuiRenderer r, float mx, float my, String label, Icons.Icon icon, boolean active,
+                       float x, float y, float maxX, Runnable action) {
+        FontRenderer f = Fonts.small();
+        float w = f.width(label) + 18 + (icon != null ? 11 : 0), h = 16;
+        if (x + w > maxX) return x;
+        boolean hot = MathUtil.inside(mx, my, x, y, w, h);
+        float hv = hover("chip:" + label, hot).get();
+        if (active) Draw.roundedGradient(r, x, y, w, h, 5, Theme.accent(0f), Theme.accent(1f), true);
+        else Draw.rounded(r, x, y, w, h, 5, Colors.lerp(Theme.SURFACE, Theme.SURFACE_HOVER, hv));
+        int c = active ? Theme.ON_ACCENT : Colors.lerp(Theme.TEXT_DIM, Theme.TEXT, hv);
+        float tx = x + 9;
+        if (icon != null) {
+            Icons.draw(r, icon, tx - 1, y + 4, 8, active ? Theme.ON_ACCENT : 0xFFFF4F7A);
+            tx += 11;
+        }
+        f.draw(r, label, tx, y + (h - f.height()) / 2f + 0.5f, c, false);
+        navHits.add(new Hit(x, y, w, h, action, null));
+        return x + w + 4;
+    }
+
+    // ------------------------------------------------------------------ favourites (Tabs layout)
+
+    private static List<String> favourites() {
+        List<String> out = new ArrayList<String>();
+        for (String s : CoolClient.get().client().favouriteMods.get().split(",")) if (!s.trim().isEmpty()) out.add(s.trim());
+        return out;
+    }
+
+    private static boolean favourite(Module m) {
+        return favourites().contains(m.name());
+    }
+
+    private static void toggleFavourite(Module m) {
+        List<String> f = favourites();
+        if (!f.remove(m.name())) f.add(m.name());
+        StringBuilder sb = new StringBuilder();
+        for (String s : f) sb.append(sb.length() == 0 ? "" : ",").append(s);
+        CoolClient.get().client().favouriteMods.set(sb.toString());
+        CoolClient.get().config().markDirty();
+    }
+
     // ------------------------------------------------------------------ module grid
 
     private List<Module> visibleModules() {
@@ -252,14 +418,50 @@ public final class ModMenuScreen extends UIScreen {
             if (m instanceof ClientSettings) continue;
             if (!q.isEmpty()) {
                 if (m.name().toLowerCase(Locale.ROOT).contains(q) || m.description().toLowerCase(Locale.ROOT).contains(q)) out.add(m);
-            } else if (category == null || m.category() == category) {
+            } else if (favouritesOnly ? favourite(m) : category == null || m.category() == category) {
                 out.add(m);
             }
+        }
+        if (tabs()) {
+            // Favourites first.
+            List<Module> fav = new ArrayList<Module>(), rest = new ArrayList<Module>();
+            List<String> names = favourites();
+            for (Module m : out) (names.contains(m.name()) ? fav : rest).add(m);
+            fav.addAll(rest);
+            return fav;
         }
         return out;
     }
 
-    private int columns() { return Math.max(2, (int) (contentW() / 128f)); }
+    private int columns() {
+        if (style == Layout.COMPACT) return 1;
+        if (tabs()) return Math.max(3, (int) (contentW() / 122f));
+        return Math.max(2, (int) (contentW() / 128f));
+    }
+
+    private float itemH() { return tabs() ? 96 : style == Layout.COMPACT ? 24 : 74; }
+
+    private float itemGap() { return style == Layout.COMPACT ? 3 : 7; }
+
+    /** A card's main click: its settings if it has any, otherwise on/off. */
+    private void activate(Module m) {
+        if (!m.settings().isEmpty() || m.bindable()) openSettings(m);
+        else if (m.toggleable()) m.toggle();
+    }
+
+    private static Runnable toggler(final Module m) {
+        return m.toggleable() ? m::toggle : null;
+    }
+
+    private float toggleAmount(Module m) {
+        Animation ta = toggleAnims.get(m);
+        if (ta == null) {
+            ta = new Animation(220, m.isEnabled() ? 1f : 0f);
+            toggleAnims.put(m, ta);
+        }
+        ta.target(m.isEnabled());
+        return ta.get();
+    }
 
     private void drawGrid(GuiRenderer r, float mx, float my, float p) {
         float alpha = 1f - p;
@@ -267,8 +469,8 @@ public final class ModMenuScreen extends UIScreen {
         float x0 = contentX() + shift, y0 = contentY(), w = contentW(), h = contentH();
         List<Module> mods = visibleModules();
         int cols = columns();
-        float gap = 7;
-        float cw = (w - gap * (cols - 1)) / cols, ch = 74;
+        float gap = itemGap();
+        float cw = (w - gap * (cols - 1)) / cols, ch = itemH();
         int rowsN = (mods.size() + cols - 1) / cols;
         gridScroll.setBounds(contentX(), y0, w, h);
         gridScroll.setContentHeight(rowsN * (ch + gap) - gap);
@@ -279,10 +481,14 @@ public final class ModMenuScreen extends UIScreen {
             float cx = x0 + (i % cols) * (cw + gap);
             float cy = y0 + (i / cols) * (ch + gap) - off;
             if (cy + ch < y0 - 4 || cy > y0 + h + 4) continue;
-            drawCard(r, m, cx, cy, cw, ch, mx, my, alpha);
+            if (tabs()) drawTile(r, m, cx, cy, cw, ch, mx, my, alpha);
+            else if (style == Layout.COMPACT) drawRow(r, m, cx, cy, cw, ch, mx, my, alpha);
+            else drawCard(r, m, cx, cy, cw, ch, mx, my, alpha);
         }
         if (mods.isEmpty()) {
-            Fonts.body().drawCentered(r, "No mods match \"" + search.text() + "\"", contentX() + w / 2f, y0 + 40, Theme.TEXT_DIM, false);
+            String empty = favouritesOnly && search.text().isEmpty() ? "No favourites yet: tap the heart on a mod"
+                    : "No mods match \"" + search.text() + "\"";
+            Fonts.body().drawCentered(r, empty, contentX() + w / 2f, y0 + 40, Theme.TEXT_DIM, false);
         }
         Scissor.pop(r);
         if (p < 0.01f) gridScroll.update(r, mx, my, CoolClient.get().platform().input().isMouseDown(0));
@@ -291,13 +497,8 @@ public final class ModMenuScreen extends UIScreen {
     private void drawCard(GuiRenderer r, Module m, float x, float y, float w, float h, float mx, float my, float alpha) {
         boolean hot = MathUtil.inside(mx, my, x, y, w, h) && gridScroll.contains(mx, my) && page.target() == 0f;
         float hv = hover(m, hot).get();
-        Animation ta = toggleAnims.get(m);
-        if (ta == null) {
-            ta = new Animation(220, m.isEnabled() ? 1f : 0f);
-            toggleAnims.put(m, ta);
-        }
-        ta.target(m.isEnabled());
-        float on = ta.get();
+        float on = toggleAmount(m);
+        if (page.target() == 0f) gridHits.add(new Hit(x, y, w, h, () -> activate(m), toggler(m)));
 
         float lift = hv * 1.5f;
         y -= lift;
@@ -333,6 +534,7 @@ public final class ModMenuScreen extends UIScreen {
         boolean hasSettings = !m.settings().isEmpty() || m.bindable();
         float gearW = hasSettings ? 18 : 0;
         boolean stripHot = hot && MathUtil.inside(mx, my, x, sy, w - gearW, 16);
+        if (page.target() == 0f && m.toggleable()) gridHits.add(new Hit(x, sy, w - gearW, 16, m::toggle, m::toggle));
         int off = Colors.lerp(0xFF3A2230, 0xFF4A2A3A, stripHot ? 1 : 0);
         int onC = Colors.lerp(0xFF1D5A4A, 0xFF23705C, stripHot ? 1 : 0);
         int strip = m.toggleable() ? Colors.lerp(off, onC, on) : Theme.SURFACE_ACTIVE;
@@ -344,6 +546,97 @@ public final class ModMenuScreen extends UIScreen {
             boolean gh = hot && MathUtil.inside(mx, my, x + w - gearW, sy, gearW, 16);
             Draw.rect(r, x + w - gearW, sy + 3, 0.5f, 10, Colors.fade(Theme.highlight(48), alpha));
             Icons.draw(r, Icons.Icon.GEAR, x + w - gearW + 4.5f, sy + 3.5f, 9, Colors.fade(gh ? Theme.TEXT : Theme.TEXT_DIM, alpha));
+        }
+    }
+
+    /** Tabs layout: a big tile with a heart, a large badge, a gear and an on/off pill. */
+    private void drawTile(GuiRenderer r, final Module m, float x, float y, float w, float h, float mx, float my, float alpha) {
+        boolean live = page.target() == 0f;
+        boolean hot = MathUtil.inside(mx, my, x, y, w, h) && gridScroll.contains(mx, my) && live;
+        float hv = hover(m, hot).get();
+        float on = toggleAmount(m);
+        y -= hv * 1.5f;
+        if (hv > 0.01f) Draw.shadow(r, x, y, w, h, 8, 10, Colors.fade(0x50000000, hv * alpha));
+        Draw.rounded(r, x, y, w, h, 8, Colors.fade(Colors.lerp(Theme.SURFACE, Theme.SURFACE_HOVER, hv), alpha));
+        int border = Colors.lerp(Theme.BORDER, Colors.withAlpha(Theme.accent(0.3f), 110), on * 0.7f);
+        Draw.roundedOutline(r, x, y, w, h, 8, 0.75f, Colors.fade(border, alpha));
+        if (live) gridHits.add(new Hit(x, y, w, h, () -> activate(m), toggler(m)));
+
+        FontRenderer nf = Fonts.body();
+        nf.draw(r, nf.trim(m.name(), w - 34), x + 9, y + 8, Colors.fade(Theme.TEXT, alpha), false);
+        boolean fav = favourite(m);
+        float hx = x + w - 21;
+        boolean heartHot = hot && MathUtil.inside(mx, my, hx - 2, y + 4, 16, 14);
+        Icons.draw(r, Icons.Icon.HEART, hx, y + 6, 11, Colors.fade(fav ? 0xFFFF4F7A : heartHot ? Theme.TEXT_DIM : Theme.TEXT_FAINT, alpha));
+        if (live) gridHits.add(new Hit(hx - 2, y + 4, 16, 14, () -> toggleFavourite(m), () -> toggleFavourite(m)));
+
+        // Big badge in the middle.
+        int cc = m.category().color;
+        float bs = 30, bx = x + (w - bs) / 2f, by = y + 25;
+        Draw.shadow(r, bx, by + 2, bs, bs, 8, 8, Colors.fade(Colors.withAlpha(cc, 60), alpha));
+        Draw.roundedGradient(r, bx, by, bs, bs, 8, Colors.fade(cc, alpha), Colors.fade(Colors.brighten(cc, 0.55f), alpha), false);
+        Fonts.get(11f).drawCentered(r, initials(m.name()), bx + bs / 2f, by + bs / 2f - 5.5f, Colors.fade(0xFFFFFFFF, alpha), false);
+        if (m.isBlocked()) Fonts.small().drawCentered(r, "Blocked by server", x + w / 2f, by + bs + 3, Colors.fade(Theme.WARNING, alpha), false);
+
+        // Bottom row: gear and the on/off pill.
+        boolean hasSettings = !m.settings().isEmpty() || m.bindable();
+        float rowY = y + h - 22, pillX = x + 7;
+        if (hasSettings) {
+            boolean gh = hot && MathUtil.inside(mx, my, x + 7, rowY, 18, 16);
+            Draw.rounded(r, x + 7, rowY, 18, 16, 4, Colors.fade(gh ? Theme.SURFACE_ACTIVE : Theme.highlight(14), alpha));
+            Icons.draw(r, Icons.Icon.GEAR, x + 11.5f, rowY + 3.5f, 9, Colors.fade(gh ? Theme.TEXT : Theme.TEXT_DIM, alpha));
+            if (live) gridHits.add(new Hit(x + 7, rowY, 18, 16, () -> openSettings(m), null));
+            pillX += 22;
+        }
+        float pw0 = x + w - 7 - pillX;
+        boolean pillHot = hot && MathUtil.inside(mx, my, pillX, rowY, pw0, 16);
+        int offC = Colors.lerp(Theme.SURFACE_ACTIVE, Theme.SURFACE_HOVER, pillHot ? 1 : 0);
+        int onC = Colors.lerp(0xFF1E6A4A, 0xFF24805A, pillHot ? 1 : 0);
+        Draw.rounded(r, pillX, rowY, pw0, 16, 4, Colors.fade(m.toggleable() ? Colors.lerp(offC, onC, on) : Theme.SURFACE_ACTIVE, alpha));
+        String label = !m.toggleable() ? "Open" : m.isEnabledRaw() ? "Enabled" : "Disabled";
+        int tc = !m.toggleable() ? Theme.TEXT : Colors.lerp(Theme.TEXT_DIM, 0xFFB9F6D8, on);
+        Fonts.get(7.5f).drawCentered(r, label, pillX + pw0 / 2f, rowY + 4.5f, Colors.fade(tc, alpha), false);
+        if (live) gridHits.add(new Hit(pillX, rowY, pw0, 16, m.toggleable() ? m::toggle : () -> activate(m), toggler(m)));
+    }
+
+    /** Compact layout: one row per mod with a switch. */
+    private void drawRow(GuiRenderer r, final Module m, float x, float y, float w, float h, float mx, float my, float alpha) {
+        boolean live = page.target() == 0f;
+        boolean hot = MathUtil.inside(mx, my, x, y, w, h) && gridScroll.contains(mx, my) && live;
+        float hv = hover(m, hot).get();
+        float on = toggleAmount(m);
+        Draw.rounded(r, x, y, w, h, 5, Colors.fade(Colors.lerp(Theme.SURFACE, Theme.SURFACE_HOVER, hv), alpha));
+        if (on > 0.01f) Draw.rounded(r, x + 1.5f, y + 5, 2.5f, h - 10, 1.25f, Colors.fade(Colors.withAlpha(Theme.accent(0.3f), (int) (255 * on)), alpha));
+        if (live) gridHits.add(new Hit(x, y, w, h, () -> activate(m), toggler(m)));
+
+        int cc = m.category().color;
+        Draw.roundedGradient(r, x + 8, y + 4, 16, 16, 4, Colors.fade(cc, alpha), Colors.fade(Colors.brighten(cc, 0.55f), alpha), false);
+        Fonts.get(6.5f).drawCentered(r, initials(m.name()), x + 16, y + 8.5f, Colors.fade(0xFFFFFFFF, alpha), false);
+        FontRenderer nf = Fonts.body();
+        float ty = y + (h - nf.height()) / 2f;
+        float nx = x + 30;
+        float rightEdge = x + w - 64;
+        String name = nf.trim(m.name(), Math.max(40, (rightEdge - nx) * 0.4f));
+        nf.draw(r, name, nx, ty, Colors.fade(Theme.TEXT, alpha), false);
+        nx += nf.width(name) + 8;
+        String cat = m.isBlocked() ? "Blocked by server" : m.category().displayName;
+        Fonts.small().draw(r, cat, nx, ty + 1.5f, Colors.fade(m.isBlocked() ? Theme.WARNING : Theme.TEXT_FAINT, alpha), false);
+        nx += Fonts.small().width(cat) + 10;
+        if (rightEdge - nx > 30) {
+            Fonts.small().draw(r, Fonts.small().trim(m.description(), rightEdge - nx), nx, ty + 1.5f, Colors.fade(Theme.TEXT_DIM, alpha), false);
+        }
+
+        boolean hasSettings = !m.settings().isEmpty() || m.bindable();
+        if (hasSettings) {
+            boolean gh = hot && MathUtil.inside(mx, my, x + w - 22, y, 20, h);
+            Icons.draw(r, Icons.Icon.GEAR, x + w - 17, y + (h - 9) / 2f, 9, Colors.fade(gh ? Theme.TEXT : Theme.TEXT_FAINT, alpha));
+            if (live) gridHits.add(new Hit(x + w - 22, y, 20, h, () -> openSettings(m), null));
+        }
+        if (m.toggleable()) {
+            float sx = x + w - 52, sy = y + (h - 11) / 2f;
+            Draw.rounded(r, sx, sy, 22, 11, 5.5f, Colors.fade(Colors.lerp(Theme.SURFACE_ACTIVE, Theme.accent(0.3f), on), alpha));
+            Draw.circle(r, sx + 5.5f + on * 11f, sy + 5.5f, 4f, Colors.fade(on > 0.5f ? Theme.ON_ACCENT : Theme.TEXT_DIM, alpha));
+            if (live) gridHits.add(new Hit(sx - 4, y, 30, h, m::toggle, m::toggle));
         }
     }
 
@@ -455,11 +748,16 @@ public final class ModMenuScreen extends UIScreen {
 
     @Override
     public boolean mouseClicked(float mx, float my, int button) {
-        if (search.mouseClicked(mx, my, button)) return true;
-        if (editHud.mouseClicked(mx, my, button)) return true;
+        boolean searchShown = !tabs() || !(themesPage || (selected != null && page.target() == 1f));
+        if (searchShown && search.mouseClicked(mx, my, button)) return true;
+        if (tabs()) {
+            if (click(navHits, mx, my, button)) return true;
+        } else if (editHud.mouseClicked(mx, my, button)) {
+            return true;
+        }
 
         // Sidebar
-        if (MathUtil.inside(mx, my, px, py, SIDEBAR, ph)) {
+        if (!tabs() && MathUtil.inside(mx, my, px, py, SIDEBAR, ph)) {
             float y = py + 52;
             List<Object> keys = new ArrayList<Object>();
             keys.add(null);
@@ -518,26 +816,18 @@ public final class ModMenuScreen extends UIScreen {
         // Grid
         if (gridScroll.mouseClicked(mx, my)) return true;
         if (!gridScroll.contains(mx, my)) return false;
-        List<Module> mods = visibleModules();
-        int cols = columns();
-        float gap = 7, w = contentW();
-        float cw = (w - gap * (cols - 1)) / cols, ch = 74;
-        for (int i = 0; i < mods.size(); i++) {
-            float cx = contentX() + (i % cols) * (cw + gap);
-            float cy = contentY() + (i / cols) * (ch + gap) - gridScroll.offset();
-            if (!MathUtil.inside(mx, my, cx, cy, cw, ch)) continue;
-            Module m = mods.get(i);
-            boolean hasSettings = !m.settings().isEmpty() || m.bindable();
-            float gearW = hasSettings ? 18 : 0;
-            CoolClient.get().platform().playClickSound();
-            if (m.toggleable() && button == 0 && MathUtil.inside(mx, my, cx, cy + ch - 16, cw - gearW, 16)) {
-                m.toggle();
-            } else if (button == 1 && m.toggleable()) {
-                m.toggle();
-            } else if (hasSettings) {
-                openSettings(m);
-            } else if (m.toggleable()) {
-                m.toggle();
+        return click(gridHits, mx, my, button);
+    }
+
+    /** Runs the topmost recorded area under the mouse (areas drawn later sit on top). */
+    private static boolean click(List<Hit> hits, float mx, float my, int button) {
+        for (int i = hits.size() - 1; i >= 0; i--) {
+            Hit h = hits.get(i);
+            if (!MathUtil.inside(mx, my, h.x, h.y, h.w, h.h)) continue;
+            Runnable action = button == 1 ? h.right : button == 0 ? h.left : null;
+            if (action != null) {
+                CoolClient.get().platform().playClickSound();
+                action.run();
             }
             return true;
         }
@@ -547,6 +837,7 @@ public final class ModMenuScreen extends UIScreen {
     private void selectCategory(Category c) {
         CoolClient.get().platform().playClickSound();
         themesPage = false;
+        favouritesOnly = false;
         category = c;
         rememberedCategory = c;
         search.setText("");

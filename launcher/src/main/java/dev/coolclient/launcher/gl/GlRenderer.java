@@ -218,6 +218,10 @@ public final class GlRenderer implements GuiRenderer, Gpu {
 
     @Override public void playerPreview(float x, float y, float size, float yaw, float pitch) {}
 
+    @Override
+    public void drawModel(float x, float y, float scale, float yaw, float pitch,
+                          java.util.function.Consumer<dev.coolclient.core.api.ModelRenderer> draw) {}
+
     // The launcher has no Minecraft font; "vanilla" text uses the smooth UI font.
     private static FontRenderer textFont() { return Fonts.get(8f); }
 

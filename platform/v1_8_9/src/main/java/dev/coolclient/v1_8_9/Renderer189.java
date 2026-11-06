@@ -210,6 +210,35 @@ final class Renderer189 implements GuiRenderer {
         }
     }
 
+    @Override
+    public void drawModel(float x, float y, float scale, float yaw, float pitch,
+                          java.util.function.Consumer<dev.coolclient.core.api.ModelRenderer> draw) {
+        GlStateManager.pushMatrix();
+        GlStateManager.enableDepthTest();
+        GlStateManager.enableColorMaterial();
+        GlStateManager.translate(x, y, 100f);
+        GlStateManager.scale(scale, scale, -scale);
+        GlStateManager.rotate(pitch, 1f, 0f, 0f);
+        GlStateManager.rotate(yaw, 0f, 1f, 0f);
+        GlStateManager.pushMatrix();
+        GlStateManager.rotate(160f, 1f, 0f, 0f);
+        DiffuseLighting.enableNormally();
+        GlStateManager.popMatrix();
+        ModelRenderer189 mr = new ModelRenderer189();
+        try {
+            draw.accept(mr);
+        } finally {
+            mr.end();
+            DiffuseLighting.disable();
+            GlStateManager.disableRescaleNormal();
+            GlStateManager.disableColorMaterial();
+            GlStateManager.disableDepthTest();
+            GlStateManager.enableTexture();
+            GlStateManager.color(1f, 1f, 1f, 1f);
+            GlStateManager.popMatrix();
+        }
+    }
+
     @Override public void push() { GlStateManager.pushMatrix(); }
 
     @Override public void pop() { GlStateManager.popMatrix(); }

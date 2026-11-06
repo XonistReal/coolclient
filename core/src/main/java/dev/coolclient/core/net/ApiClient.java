@@ -129,6 +129,30 @@ public final class ApiClient {
         });
     }
 
+    /** Blocking download of a file the API server hosts (cosmetic images and models). Never call on the game thread. */
+    public byte[] download(String path, int maxBytes) throws IOException {
+        HttpURLConnection c = (HttpURLConnection) new URL(baseUrl() + path).openConnection();
+        c.setConnectTimeout(4000);
+        c.setReadTimeout(10000);
+        c.setRequestProperty("User-Agent", "CoolClient/" + CoolClient.VERSION + " (MC " + CoolClient.get().platform().minecraftVersion() + ")");
+        int code = c.getResponseCode();
+        if (code != 200) throw new IOException("HTTP " + code);
+        if (c.getContentLengthLong() > maxBytes) throw new IOException("file too large");
+        InputStream in = c.getInputStream();
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) > 0) {
+                out.write(buf, 0, n);
+                if (out.size() > maxBytes) throw new IOException("file too large");
+            }
+            return out.toByteArray();
+        } finally {
+            in.close();
+        }
+    }
+
     /** Blocking JSON request. Never call on the game thread. */
     public Map<String, Object> request(String method, String path, Object body, boolean auth) throws IOException {
         HttpURLConnection c = (HttpURLConnection) new URL(baseUrl() + path).openConnection();

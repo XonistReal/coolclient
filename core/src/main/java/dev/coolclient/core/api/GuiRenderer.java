@@ -50,6 +50,14 @@ public interface GuiRenderer {
      */
     void playerPreview(float x, float y, float size, float yaw, float pitch);
 
+    /**
+     * Draws 3D geometry in a menu, lit like an item: the model's origin lands on (x, y),
+     * {@code scale} menu pixels per model pixel. Model space is the cosmetic one (y down, the
+     * front faces -z), turned {@code yaw} degrees around the vertical axis and tilted
+     * {@code pitch} degrees. Works on the title screen too.
+     */
+    void drawModel(float x, float y, float scale, float yaw, float pitch, java.util.function.Consumer<ModelRenderer> draw);
+
     // ------------------------------------------------------------- state
 
     void push();

@@ -19,5 +19,9 @@ ENFORCE_ENTITLEMENTS = "0"
 # Mojang refuses requests from Cloudflare, so its two calls go through the relay in ../relay/ (Netlify).
 MOJANG_RELAY = "https://coolclient-relay.netlify.app/mojang"
 
+# Cosmetic images and models (../public/cosmetics/) are served as static files at /cosmetics/...
+[assets]
+directory = "../public"
+
 [observability]
 enabled = true
