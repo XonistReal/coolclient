@@ -151,6 +151,43 @@ public final class Gpu21 implements Gpu {
 
     @Override public int glTexture(int handle) { return Platform21.TEXTURES.glId(handle); }
 
+    private final java.util.Map<Integer, int[]> frames = new java.util.HashMap<Integer, int[]>();
+
+    @Override
+    public int copyFrame(int slot) {
+        if (gui != null) gui.flush();
+        Window w = Minecraft.getInstance().getWindow();
+        int fw = w.getWidth(), fh = w.getHeight();
+        int[] f = frames.get(slot); // {texture, width, height}
+        GlStateManager._activeTexture(GL20.GL_TEXTURE0);
+        if (f == null || f[1] != fw || f[2] != fh) {
+            if (f == null) {
+                f = new int[] {GlStateManager._genTexture(), 0, 0};
+                frames.put(slot, f);
+            }
+            GlStateManager._bindTexture(f[0]);
+            GlStateManager._texImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, fw, fh, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, null);
+            GlStateManager._texParameter(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+            GlStateManager._texParameter(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+            GlStateManager._texParameter(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL15.GL_CLAMP_TO_EDGE);
+            GlStateManager._texParameter(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL15.GL_CLAMP_TO_EDGE);
+            f[1] = fw;
+            f[2] = fh;
+        } else {
+            GlStateManager._bindTexture(f[0]);
+        }
+        GlStateManager._glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, fw, fh);
+        return f[0];
+    }
+
+    @Override
+    public int keptFrame(int slot) {
+        int[] f = frames.get(slot);
+        Window w = Minecraft.getInstance().getWindow();
+        // A resize leaves the old copy at the wrong size; treat it as missing.
+        return f == null || f[1] != w.getWidth() || f[2] != w.getHeight() ? 0 : f[0];
+    }
+
     @Override
     public int captureBackdrop() {
         if (gui != null) gui.flush();

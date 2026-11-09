@@ -12,4 +12,10 @@ public abstract class ItemEntityRenderStateMixin implements ItemStateDuck {
     @Override public boolean cool$onGround() { return cool$onGround; }
 
     @Override public void cool$setOnGround(boolean onGround) { cool$onGround = onGround; }
+
+    @Unique private String cool$itemId = "";
+
+    @Override public String cool$itemId() { return cool$itemId; }
+
+    @Override public void cool$setItemId(String id) { cool$itemId = id; }
 }

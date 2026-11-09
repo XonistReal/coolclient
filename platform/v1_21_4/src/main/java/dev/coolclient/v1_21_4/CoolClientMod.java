@@ -39,6 +39,11 @@ public class CoolClientMod implements ClientModInitializer {
             }
 
             @Override
+            public void auditMixins() {
+                org.spongepowered.asm.mixin.MixinEnvironment.getCurrentEnvironment().audit();
+            }
+
+            @Override
             public void createWorld(String name) {
                 String level = name + "-" + System.currentTimeMillis();
                 LevelSettings settings = new LevelSettings(level, GameType.CREATIVE, false, Difficulty.PEACEFUL, true,

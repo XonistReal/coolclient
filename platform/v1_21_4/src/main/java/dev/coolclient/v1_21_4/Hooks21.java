@@ -74,6 +74,18 @@ public final class Hooks21 {
         g.flush();
     }
 
+    /** Shader colour to restore after a recoloured glint (see RenderStateShardMixin). */
+    public static float[] savedShaderColor;
+
+    /** The world is drawn and the HUD is next: motion blur, then the PostWorld effects (colour grading). */
+    public static void postWorld(GuiGraphics g) {
+        if (!ready() || Minecraft.getInstance().level == null) return;
+        dev.coolclient.core.api.GuiRenderer r = Platform21.RENDERER.frame(g);
+        dev.coolclient.core.modules.visual.RenderTweaks.motionBlur(r);
+        CoolClient.get().events().post(new dev.coolclient.core.event.Events.PostWorld(r));
+        g.flush();
+    }
+
     public static Screen replaceScreen(Screen s, ClientLevel level) {
         if (!ready() || !CoolClient.get().client().customMainMenu.on()) return s;
         if (s instanceof TitleScreen || (s == null && level == null)) return new CoolScreen(new MainMenuScreen());

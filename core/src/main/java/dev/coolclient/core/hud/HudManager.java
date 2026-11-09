@@ -22,6 +22,7 @@ public final class HudManager {
     public List<HudElement> elements() { return elements; }
 
     public void render(GuiRenderer r) {
+        if (dev.coolclient.core.modules.utility.UtilityTweaks.AutoHideHud.hidden()) return;
         for (HudElement e : elements) {
             if (!e.isEnabled() || !e.shouldRender()) continue;
             try {

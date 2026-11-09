@@ -45,4 +45,10 @@ public abstract class CameraMixin {
         Freelook f = cool$freelook();
         return f != null ? f.pitch() : pitch;
     }
+
+    /** Camera module: third-person distance (vanilla 4 blocks, before the entity scale). */
+    @ModifyArg(method = "setup", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Camera;getMaxZoom(F)F"), index = 0)
+    private float cool$distance(float zoom) {
+        return Hooks21.ready() ? zoom * dev.coolclient.core.modules.visual.RenderTweaks.Camera.thirdPersonDistance() / 4f : zoom;
+    }
 }

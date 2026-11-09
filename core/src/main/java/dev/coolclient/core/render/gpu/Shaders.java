@@ -50,6 +50,11 @@ public final class Shaders {
         return get(gpu, "shape", "ui.vsh", "shape.fsh", "");
     }
 
+    /** Full-screen post effects (colour grading, frame blending). */
+    public static Program post(Gpu gpu) {
+        return get(gpu, "post", "ui.vsh", "post.fsh", "");
+    }
+
     public static Program background(Gpu gpu, Backgrounds.Style style) {
         return get(gpu, "bg:" + style.define, "ui.vsh", "background.fsh", "#define " + style.define + "\n");
     }

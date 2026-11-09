@@ -106,4 +106,29 @@ public final class Events {
     public static final class WorldLeave {
         public static final WorldLeave INSTANCE = new WorldLeave();
     }
+
+    /** World-space drawing pass: after the level, before the hand. */
+    public static final class RenderWorld {
+        public final dev.coolclient.core.api.WorldDraw draw;
+        public final float partialTicks;
+
+        public RenderWorld(dev.coolclient.core.api.WorldDraw draw, float partialTicks) {
+            this.draw = draw;
+            this.partialTicks = partialTicks;
+        }
+    }
+
+    /** The server sent its world time (vanilla does this every 20 server ticks). */
+    public static final class ServerTime {
+        public final long gameTime;
+
+        public ServerTime(long gameTime) { this.gameTime = gameTime; }
+    }
+
+    /** The world is drawn and the vanilla HUD is next: full-screen post effects go here. */
+    public static final class PostWorld {
+        public final GuiRenderer renderer;
+
+        public PostWorld(GuiRenderer renderer) { this.renderer = renderer; }
+    }
 }

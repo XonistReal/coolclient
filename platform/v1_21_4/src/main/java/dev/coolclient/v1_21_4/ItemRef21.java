@@ -38,4 +38,17 @@ final class ItemRef21 implements ItemRef {
     @Override public int maxDamage() { return stack.isDamageableItem() ? stack.getMaxDamage() : 0; }
 
     @Override public Object handle() { return stack; }
+
+    @Override
+    public java.util.List<String> enchantments() {
+        java.util.List<String> out = new java.util.ArrayList<String>();
+        net.minecraft.world.item.enchantment.ItemEnchantments e = stack.getEnchantments();
+        if (e.isEmpty()) e = stack.getOrDefault(net.minecraft.core.component.DataComponents.STORED_ENCHANTMENTS, e);
+        for (it.unimi.dsi.fastutil.objects.Object2IntMap.Entry<net.minecraft.core.Holder<net.minecraft.world.item.enchantment.Enchantment>> en : e.entrySet()) {
+            out.add(net.minecraft.world.item.enchantment.Enchantment.getFullname(en.getKey(), en.getIntValue()).getString());
+        }
+        return out;
+    }
+
+    @Override public int rarity() { return stack.getRarity().ordinal(); }
 }

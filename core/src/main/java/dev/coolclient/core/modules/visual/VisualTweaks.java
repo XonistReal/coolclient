@@ -105,8 +105,20 @@ public final class VisualTweaks {
     }
 
     public static final class WeatherChanger extends Module {
+        public final ModeSetting weather = add(new ModeSetting("Weather", "Clear", "Clear", "Rain", "Thunder")
+                .describe("Rain falls as snow in cold biomes"));
+
         public WeatherChanger() {
-            super("Clear Weather", "Hides rain and snow (client-side).", Category.VISUAL);
+            super("Weather Changer", "Client-side weather: clear skies, rain or a storm.", Category.VISUAL);
+            keepId("clear_weather");
+        }
+
+        /** {rain, thunder} levels to show instead of the real weather, or null when off. */
+        public float[] levels() {
+            if (!isEnabled()) return null;
+            if (weather.is("Rain")) return new float[] {1f, 0f};
+            if (weather.is("Thunder")) return new float[] {1f, 1f};
+            return new float[] {0f, 0f};
         }
     }
 

@@ -38,4 +38,21 @@ final class ItemRef189 implements ItemRef {
     static Item item(String id) {
         return Item.REGISTRY.get(new Identifier(id));
     }
+
+    @Override
+    public java.util.List<String> enchantments() {
+        java.util.List<String> out = new java.util.ArrayList<String>();
+        net.minecraft.nbt.NbtCompound nbt = stack.getNbt();
+        if (nbt == null) return out;
+        net.minecraft.nbt.NbtList list = nbt.getList("ench", 10);
+        if (list.size() == 0) list = nbt.getList("StoredEnchantments", 10);
+        for (int i = 0; i < list.size(); i++) {
+            net.minecraft.nbt.NbtCompound e = list.getCompound(i);
+            net.minecraft.enchantment.Enchantment en = net.minecraft.enchantment.Enchantment.byRawId(e.getShort("id"));
+            if (en != null) out.add(en.getTranslatedName(e.getShort("lvl")));
+        }
+        return out;
+    }
+
+    @Override public int rarity() { return stack.getRarity() == null ? 0 : stack.getRarity().ordinal(); }
 }

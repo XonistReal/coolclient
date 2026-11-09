@@ -27,6 +27,7 @@ public abstract class ItemEntityRendererMixin {
             at = @At("TAIL"))
     private void cool$extract(ItemEntity item, ItemEntityRenderState state, float tickDelta, CallbackInfo ci) {
         ((ItemStateDuck) state).cool$setOnGround(item.onGround());
+        ((ItemStateDuck) state).cool$setItemId(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item.getItem().getItem()).toString());
     }
 
     @Inject(method = "render(Lnet/minecraft/client/renderer/entity/state/ItemEntityRenderState;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
@@ -51,6 +52,20 @@ public abstract class ItemEntityRendererMixin {
     @Redirect(method = "render(Lnet/minecraft/client/renderer/entity/state/ItemEntityRenderState;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
             at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;mulPose(Lorg/joml/Quaternionf;)V"))
     private void cool$rotate(PoseStack pose, Quaternionf q) {
+        cool$turn(pose, q);
+        if (Hooks21.ready()) {
+            float s = dev.coolclient.core.modules.visual.RenderTweaks.UhcOverlay.scale(((ItemStateDuck) cool$state).cool$itemId());
+            if (s != 1f) pose.scale(s, s, s);
+        }
+    }
+
+    @Unique
+    private void cool$turn(PoseStack pose, Quaternionf q) {
+        if (Hooks21.ready() && dev.coolclient.core.modules.visual.RenderTweaks.FlatItems.on()) {
+            // 2D Items: face the camera like a sprite.
+            pose.mulPose(net.minecraft.client.Minecraft.getInstance().getEntityRenderDispatcher().cameraOrientation());
+            return;
+        }
         VisualTweaks.ItemPhysics p = cool$physics;
         if (p == null) {
             pose.mulPose(q);

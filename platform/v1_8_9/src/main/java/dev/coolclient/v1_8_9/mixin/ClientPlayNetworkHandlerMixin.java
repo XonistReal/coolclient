@@ -24,6 +24,7 @@ public abstract class ClientPlayNetworkHandlerMixin {
     private void cool$join(GameJoinS2CPacket packet, CallbackInfo ci) {
         if (!Hooks189.ready()) return;
         MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.getCurrentServerEntry() != null) dev.coolclient.v1_8_9.Platform189.lastServer = mc.getCurrentServerEntry();
         CoolClient.get().onWorldJoin(mc.getCurrentServerEntry() == null ? null : mc.getCurrentServerEntry().address);
     }
 
@@ -45,6 +46,8 @@ public abstract class ClientPlayNetworkHandlerMixin {
 
     @Inject(method = "onWorldTimeUpdate", at = @At("HEAD"), cancellable = true)
     private void cool$time(WorldTimeUpdateS2CPacket packet, CallbackInfo ci) {
+        // TPS needs every time packet, even when Time Changer drops it.
+        Hooks189.serverTime(packet.getTime());
         if (Hooks189.ready() && CoolClient.get().modules().active(VisualTweaks.TimeChanger.class)) ci.cancel();
     }
 }

@@ -69,6 +69,63 @@ public final class Hooks189 {
         }
     }
 
+    /** Glint colour of the vanilla 1.8 enchantment glint (-8372020 = 0xFF8040CC). */
+    private static final int VANILLA_GLINT = 0xFF8040CC;
+
+    /**
+     * The 1.8 glint tint for Glint's colour. The setting is in "1.21 terms" (its default 0xA755FF is the
+     * brightest 1.21 glint texel), so the same colour gives the same look on both versions.
+     */
+    public static int glintColor(int vanilla) {
+        float[] c = dev.coolclient.core.modules.visual.RenderTweaks.Glint.rgb();
+        if (c == null) return vanilla;
+        int r = Math.min(255, Math.round(c[0] / (167 / 255f) * 0x80));
+        int g = Math.min(255, Math.round(c[1] / (85 / 255f) * 0x40));
+        int b = Math.min(255, Math.round(c[2] * 0xCC));
+        return 0xFF000000 | (r << 16) | (g << 8) | b;
+    }
+
+    /** {r, g, b} multipliers for the armor glint colour call, or null for vanilla. */
+    public static float[] glintFactors() {
+        float[] c = dev.coolclient.core.modules.visual.RenderTweaks.Glint.rgb();
+        if (c == null) return null;
+        int t = glintColor(VANILLA_GLINT);
+        return new float[] {((t >> 16) & 0xFF) / (float) 0x80, ((t >> 8) & 0xFF) / (float) 0x40, (t & 0xFF) / (float) 0xCC};
+    }
+
+    private static long lastServerTime = Long.MIN_VALUE;
+
+    /** World-time packet (seen on the network thread and again on the game thread): one ServerTime event each. */
+    public static void serverTime(final long gameTime) {
+        if (!ready() || gameTime == lastServerTime) return;
+        lastServerTime = gameTime;
+        dev.coolclient.core.util.Scheduler.main(() ->
+                CoolClient.get().events().post(new dev.coolclient.core.event.Events.ServerTime(gameTime)));
+    }
+
+    /** The world is drawn and the HUD is next: colour grading and other PostWorld effects. */
+    public static void postWorld() {
+        if (!ready() || MinecraftClient.getInstance().world == null) return;
+        MinecraftClient.getInstance().gameRenderer.setupHudMatrixMode();
+        GlStateManager.pushMatrix();
+        try {
+            CoolClient.get().events().post(new dev.coolclient.core.event.Events.PostWorld(Platform189.RENDERER.frame()));
+        } finally {
+            GlStateManager.popMatrix();
+            GlStateManager.color(1f, 1f, 1f, 1f);
+            GlStateManager.enableAlphaTest();
+        }
+    }
+
+    /** Menu Blur behind a vanilla screen; false if nothing was drawn. */
+    public static boolean menuBlur(boolean container) {
+        if (!ready()) return false;
+        boolean done = dev.coolclient.core.modules.visual.RenderTweaks.MenuBlur.draw(Platform189.RENDERER.frame(), container);
+        GlStateManager.color(1f, 1f, 1f, 1f);
+        GlStateManager.enableAlphaTest();
+        return done;
+    }
+
     public static Screen replaceScreen(Screen s, ClientWorld world) {
         if (!ready() || !CoolClient.get().client().customMainMenu.on()) return s;
         if (s instanceof TitleScreen || (s == null && world == null)) return new CoolScreen(new MainMenuScreen());

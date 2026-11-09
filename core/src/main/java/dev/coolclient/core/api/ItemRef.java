@@ -35,4 +35,10 @@ public interface ItemRef {
     default float durabilityFraction() {
         return maxDamage() <= 0 ? 1f : Math.max(0f, (maxDamage() - damage()) / (float) maxDamage());
     }
+
+    /** Enchantments as display text, e.g. "Sharpness V". */
+    default java.util.List<String> enchantments() { return java.util.Collections.emptyList(); }
+
+    /** 0 common, 1 uncommon, 2 rare, 3 epic. */
+    default int rarity() { return 0; }
 }

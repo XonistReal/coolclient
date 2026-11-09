@@ -16,17 +16,21 @@ public abstract class WorldMixin {
     @Shadow @Final public boolean isClient;
 
     @org.spongepowered.asm.mixin.Unique
-    private boolean cool$clear() {
-        return isClient && Hooks189.ready() && CoolClient.get().modules().active(VisualTweaks.WeatherChanger.class);
+    private float[] cool$weather() {
+        if (!isClient || !Hooks189.ready()) return null;
+        VisualTweaks.WeatherChanger w = CoolClient.get().modules().get(VisualTweaks.WeatherChanger.class);
+        return w == null ? null : w.levels();
     }
 
     @Inject(method = "getRainGradient", at = @At("HEAD"), cancellable = true)
     private void cool$rain(float delta, CallbackInfoReturnable<Float> cir) {
-        if (cool$clear()) cir.setReturnValue(0f);
+        float[] w = cool$weather();
+        if (w != null) cir.setReturnValue(w[0]);
     }
 
     @Inject(method = "getThunderGradient", at = @At("HEAD"), cancellable = true)
     private void cool$thunder(float delta, CallbackInfoReturnable<Float> cir) {
-        if (cool$clear()) cir.setReturnValue(0f);
+        float[] w = cool$weather();
+        if (w != null) cir.setReturnValue(w[1]);
     }
 }

@@ -204,7 +204,7 @@ public final class GpuDraw {
 
     // ================================================================== helpers
 
-    private static void matrix(Gpu g, Shaders.Program p) {
+    static void matrix(Gpu g, Shaders.Program p) {
         float[] m = g.guiMatrix();
         if (m != null) g.uniformMatrix(p.u("uMVP"), m);
     }
@@ -213,7 +213,7 @@ public final class GpuDraw {
         g.uniform(loc, Colors.r(c) / 255f, Colors.g(c) / 255f, Colors.b(c) / 255f, Colors.a(c) / 255f);
     }
 
-    private static void quad(Gpu g, float x0, float y0, float x1, float y1) {
+    static void quad(Gpu g, float x0, float y0, float x1, float y1) {
         float[] q = QUAD;
         q[0] = x0; q[1] = y0;
         q[2] = x0; q[3] = y1;

@@ -120,6 +120,13 @@ public final class ModMenuScreen extends UIScreen {
         return s;
     }
 
+    /** Opens on the module grid filtered by a search. */
+    public static ModMenuScreen searching(UIScreen parent, String query) {
+        ModMenuScreen s = new ModMenuScreen(parent);
+        s.search.setText(query);
+        return s;
+    }
+
     public static ModMenuScreen clientSettings(UIScreen parent) {
         return forModule(parent, CoolClient.get().client());
     }

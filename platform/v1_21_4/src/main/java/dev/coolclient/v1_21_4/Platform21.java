@@ -29,7 +29,8 @@ import java.util.Set;
 
 public final class Platform21 implements Platform {
     private static final Set<Feature> FEATURES = EnumSet.of(Feature.OFFHAND, Feature.TOTEMS, Feature.SHIELDS,
-            Feature.COOLDOWNS, Feature.END_CRYSTALS, Feature.ELYTRA, Feature.TEXTURE_ANIMATIONS);
+            Feature.COOLDOWNS, Feature.END_CRYSTALS, Feature.ELYTRA, Feature.TEXTURE_ANIMATIONS, Feature.MOTION_BLUR,
+            Feature.ATTACK_COOLDOWN, Feature.SHULKER_BOXES);
 
     public static final Textures21 TEXTURES = new Textures21();
     public static final Renderer21 RENDERER = new Renderer21(TEXTURES);
@@ -126,4 +127,32 @@ public final class Platform21 implements Platform {
     }
 
     @Override public void setTextureAnimations(boolean enabled) { textureAnimations = enabled; }
+
+    /** The local player's selected stack. */
+    public static dev.coolclient.core.api.ItemRef held() {
+        return mc().player == null ? dev.coolclient.core.api.ItemRef.EMPTY : ItemRef21.of(mc().player.getMainHandItem());
+    }
+
+    /** The multiplayer server last joined, for Reconnect. */
+    public static net.minecraft.client.multiplayer.ServerData lastServer;
+
+    @Override public String gpuName() { return com.mojang.blaze3d.platform.GlUtil.getRenderer(); }
+
+    @Override
+    public File singleplayerWorldDir() {
+        net.minecraft.client.server.IntegratedServer s = mc().getSingleplayerServer();
+        if (s == null) return null;
+        return s.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).toAbsolutePath().normalize().toFile();
+    }
+
+    @Override public boolean canReconnect() { return lastServer != null; }
+
+    @Override
+    public void reconnect() {
+        net.minecraft.client.multiplayer.ServerData d = lastServer;
+        if (d == null) return;
+        Screen parent = new JoinMultiplayerScreen(new net.minecraft.client.gui.screens.TitleScreen());
+        net.minecraft.client.gui.screens.ConnectScreen.startConnecting(parent, mc(),
+                net.minecraft.client.multiplayer.resolver.ServerAddress.parseString(d.ip), d, false, null);
+    }
 }

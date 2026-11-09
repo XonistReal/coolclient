@@ -225,6 +225,8 @@ final class SelfTestReel {
         // Before/after clips of single modules use modern commands (/damage, /item, components).
         if (!a.platform().minecraftVersion().startsWith("1.8")) features(a);
         else legacyFeatures(a);
+        // The Lunar/Feather-style modules, on both versions (-Preel=mods- records only these).
+        newModules(a, !a.platform().minecraftVersion().startsWith("1.8"));
 
         // Put the dev profile back the way the normal self-test expects it.
         steps.add(once(() -> {
@@ -872,6 +874,318 @@ final class SelfTestReel {
             old.setEnabled(oldBefore);
             sky.setEnabled(false);
             a.platform().game().setHudHidden(false);
+        }));
+    }
+
+    // ---------------------------------------------------------------- the newer modules
+
+    /** Teleport-look that works on both versions (1.8 has no {@code @s}). */
+    private String look(boolean modern, float yaw, float pitch) {
+        return modern ? look(yaw, pitch) : "/tp @p " + e(0, 0, 0) + String.format(Locale.ROOT, " %.1f %.1f", yaw, pitch);
+    }
+
+    /** A dropped item that can't be picked up, {@code dz} blocks in front of the camera. */
+    private String loot(boolean modern, String id, int meta, String nbt, double dx, double dz) {
+        if (modern) {
+            return "/summon minecraft:item " + e(dx, 0.5, dz) + " {Item:{id:\"minecraft:" + id + "\",count:1" + nbt + "},PickupDelay:32767}";
+        }
+        // 1.8 cuts commands at 100 characters: no namespace, relative position, short tags.
+        return String.format(Locale.ROOT, "/summon Item ~%.1f ~0.5 ~%.1f {Item:{id:%s,Count:1%s%s},PickupDelay:9999}", dx, dz, id,
+                meta == 0 ? "" : ",Damage:" + meta, nbt);
+    }
+
+    /**
+     * One or two short clips per visual module added for parity with other clients: the new HUD elements,
+     * chunk borders, TNT timer, loot beams with the UHC overlay, 2D items, light levels, mob outline, glint,
+     * fog, colour grading, menu blur, titles, camera distance and the weather changer.
+     */
+    private void newModules(final CoolClient a, final boolean modern) {
+        final List<Module> mods = new ArrayList<Module>();
+        final Map<Module, Boolean> was = new HashMap<Module, Boolean>();
+        final Class<?>[] types = {
+            dev.coolclient.core.modules.hud.TargetHud.class, dev.coolclient.core.modules.hud.TpsHud.class,
+            dev.coolclient.core.modules.hud.SystemInfoHud.class, dev.coolclient.core.modules.hud.MouseStrokesHud.class,
+            dev.coolclient.core.modules.hud.PaperdollHud.class, dev.coolclient.core.modules.hud.BlockInfoHud.class,
+            dev.coolclient.core.modules.hud.PickupLogHud.class, dev.coolclient.core.modules.hud.HeldItemInfoHud.class,
+            dev.coolclient.core.modules.hud.AttackIndicatorHud.class, dev.coolclient.core.modules.visual.HitMarkers.class,
+            dev.coolclient.core.modules.visual.WorldOverlays.ChunkBorders.class, dev.coolclient.core.modules.visual.WorldOverlays.TntTimer.class,
+            dev.coolclient.core.modules.visual.WorldOverlays.LootBeams.class, dev.coolclient.core.modules.visual.WorldOverlays.LightOverlay.class,
+            dev.coolclient.core.modules.visual.WorldOverlays.MobOutline.class, dev.coolclient.core.modules.visual.RenderTweaks.Glint.class,
+            dev.coolclient.core.modules.visual.RenderTweaks.Fog.class, dev.coolclient.core.modules.visual.RenderTweaks.ColorGrading.class,
+            dev.coolclient.core.modules.visual.RenderTweaks.MenuBlur.class, dev.coolclient.core.modules.visual.RenderTweaks.Titles.class,
+            dev.coolclient.core.modules.visual.RenderTweaks.Camera.class, dev.coolclient.core.modules.visual.RenderTweaks.ArmorBar.class,
+            dev.coolclient.core.modules.visual.RenderTweaks.UhcOverlay.class, dev.coolclient.core.modules.visual.RenderTweaks.FlatItems.class,
+            VisualTweaks.WeatherChanger.class,
+        };
+        for (Class<?> t : types) {
+            @SuppressWarnings("unchecked")
+            Module m = a.modules().get((Class<Module>) t);
+            if (m != null) mods.add(m);
+        }
+        final Map<Class<?>, Module> byClass = new HashMap<Class<?>, Module>();
+        for (Module m : mods) byClass.put(m.getClass(), m);
+        final java.util.function.Function<Class<?>, Module> mod = byClass::get;
+        final java.util.function.BiConsumer<Class<?>, Boolean> set = (c, on) -> {
+            Module m = byClass.get(c);
+            if (m != null) m.setEnabled(on);
+        };
+
+        // A clean patch around the camera, the camera on the ground looking south, a mixed armor kit.
+        steps.add(once(() -> {
+            for (Module m : mods) {
+                was.put(m, m.isEnabledRaw());
+                m.setEnabled(false);
+            }
+            for (CosmeticType t : CosmeticType.values()) a.cosmetics().unequip(t);
+            a.platform().openScreen(null);
+            a.platform().game().setHudHidden(false);
+            a.platform().game().setPerspective(0);
+            bx = (int) Math.floor(a.platform().game().x());
+            by = (int) Math.floor(a.platform().game().y());
+            bz = (int) Math.floor(a.platform().game().z());
+            if (modern) {
+                cmd("/time set 6000", "/weather clear", "/effect clear @s", killAll("minecraft:item"), killAll("minecraft:zombie"),
+                        "/item replace entity @s armor.head with minecraft:golden_helmet",
+                        "/item replace entity @s armor.chest with minecraft:diamond_chestplate[enchantments={levels:{\"minecraft:protection\":4}}]",
+                        "/item replace entity @s armor.legs with minecraft:iron_leggings",
+                        "/item replace entity @s armor.feet with minecraft:leather_boots",
+                        "/item replace entity @s weapon.mainhand with minecraft:diamond_sword[enchantments={levels:{\"minecraft:sharpness\":5,\"minecraft:looting\":3}}]",
+                        look(true, 0, 50));
+                safe();
+            } else {
+                // Survival shows the health and armor rows (resistance V and saturation keep it safe).
+                cmd("/gamemode 0", "/effect @p 11 99999 4 true", "/effect @p 23 99999 0 true",
+                        "/time set 6000", "/weather clear", "/kill @e[type=Item]", "/kill @e[type=Zombie]",
+                        "/replaceitem entity @p slot.armor.head minecraft:golden_helmet",
+                        "/replaceitem entity @p slot.armor.chest diamond_chestplate 1 0 {ench:[{id:0,lvl:4}]}",
+                        "/replaceitem entity @p slot.armor.legs minecraft:iron_leggings",
+                        "/replaceitem entity @p slot.armor.feet minecraft:leather_boots",
+                        "/replaceitem entity @p slot.hotbar.0 diamond_sword 1 0 {ench:[{id:16,lvl:5}]}",
+                        look(false, 0, 50));
+            }
+        }));
+        steps.add(pause(1.5));
+
+        // HUD: the new elements live, with items arriving for the pickup log and a weapon swap for the attack indicator.
+        Class<?>[] hud = {dev.coolclient.core.modules.hud.TpsHud.class, dev.coolclient.core.modules.hud.SystemInfoHud.class,
+            dev.coolclient.core.modules.hud.MouseStrokesHud.class, dev.coolclient.core.modules.hud.PaperdollHud.class,
+            dev.coolclient.core.modules.hud.BlockInfoHud.class, dev.coolclient.core.modules.hud.PickupLogHud.class,
+            dev.coolclient.core.modules.hud.HeldItemInfoHud.class, dev.coolclient.core.modules.hud.AttackIndicatorHud.class,
+            dev.coolclient.core.modules.hud.TargetHud.class, dev.coolclient.core.modules.visual.HitMarkers.class,
+            dev.coolclient.core.modules.visual.RenderTweaks.ArmorBar.class};
+        final Class<?>[] hudSet = hud;
+        final String give = modern ? "/give @s minecraft:" : "/give @p minecraft:";
+        final Cues hudCues = new Cues(3.4)
+                .at(0.3, () -> cmd(give + "cobblestone 12"))
+                .at(0.9, () -> cmd(give + "ender_pearl 4"))
+                .at(1.5, () -> cmd(give + "golden_apple 2"))
+                .at(1.0, () -> a.events().post(new Events.Attack(-1, "Zombie", false, 2.8)));
+        if (modern) {
+            hudCues.at(0.4, () -> cmd("/item replace entity @s weapon.mainhand with minecraft:diamond_axe"));
+            hudCues.at(2.0, () -> cmd("/item replace entity @s weapon.mainhand with minecraft:diamond_sword[enchantments={levels:{\"minecraft:sharpness\":5,\"minecraft:looting\":3}}]"));
+        }
+        final DoubleConsumer swing = pan(-25, 25, 50);
+        steps.add(clip("mods-hud", 3.4, () -> {
+            for (Class<?> c : hudSet) set.accept(c, true);
+        }, k -> {
+            hudCues.accept(k);
+            if (!modern) return;
+            swing.accept(k);
+        }));
+        steps.add(clip("mods-hud-editor", 1.6, () -> a.platform().openScreen(new HudEditorScreen(null)), null));
+        steps.add(once(() -> {
+            a.platform().openScreen(null);
+            for (Class<?> c : hudSet) set.accept(c, false);
+        }));
+
+        // Chunk borders.
+        steps.add(clip("mods-chunks", 1.8, () -> {
+            cmd(look(modern, 35, 25));
+            set.accept(dev.coolclient.core.modules.visual.WorldOverlays.ChunkBorders.class, true);
+        }, null));
+        steps.add(once(() -> set.accept(dev.coolclient.core.modules.visual.WorldOverlays.ChunkBorders.class, false)));
+
+        // TNT timer: a lit block a few metres ahead, removed before it goes off.
+        steps.add(clip("mods-tnt", 2.4, () -> {
+            set.accept(dev.coolclient.core.modules.visual.WorldOverlays.TntTimer.class, true);
+            cmd(look(modern, 0, 15), modern ? "/summon minecraft:tnt " + e(0, 0, 4) + " {fuse:90}"
+                    : "/summon PrimedTnt " + e(0, 0, 4) + " {Fuse:90}");
+        }, null));
+        steps.add(once(() -> {
+            cmd(modern ? killAll("minecraft:tnt") : "/kill @e[type=PrimedTnt]");
+            set.accept(dev.coolclient.core.modules.visual.WorldOverlays.TntTimer.class, false);
+        }));
+
+        // Loot: beams by rarity, the UHC overlay's big gold, then the same drop as 2D items.
+        final Runnable drop = () -> {
+            if (modern) {
+                cmd(loot(true, "golden_apple", 0, "", -1.4, 3.4), loot(true, "enchanted_golden_apple", 0, "", 0, 3.8),
+                        loot(true, "gold_ingot", 0, "", 1.4, 3.4), loot(true, "player_head", 0, "", -0.7, 5.0),
+                        loot(true, "totem_of_undying", 0, "", 0.8, 5.2), loot(true, "iron_ingot", 0, "", 2.2, 4.6),
+                        loot(true, "diamond_sword", 0, ",components:{\"minecraft:enchantments\":{levels:{\"minecraft:sharpness\":1}}}", -2.2, 4.6));
+            } else {
+                cmd(loot(false, "golden_apple", 0, "", -1.4, 3.4), loot(false, "golden_apple", 1, "", 0, 3.8),
+                        loot(false, "gold_ingot", 0, "", 1.4, 3.4), loot(false, "skull", 3, "", -0.7, 5.0),
+                        loot(false, "nether_star", 0, "", 0.8, 5.2), loot(false, "iron_ingot", 0, "", 2.2, 4.6),
+                        loot(false, "diamond_sword", 0, ",tag:{ench:[{id:16}]}", -2.2, 4.6));
+            }
+        };
+        steps.add(once(() -> cmd(look(modern, 0, 28))));
+        steps.add(clip("mods-loot-off", 1.6, null, new Cues(1.6).at(0.05, drop)));
+        steps.add(clip("mods-loot-on", 1.8, () -> {
+            set.accept(dev.coolclient.core.modules.visual.WorldOverlays.LootBeams.class, true);
+            set.accept(dev.coolclient.core.modules.visual.RenderTweaks.UhcOverlay.class, true);
+        }, null));
+        steps.add(clip("mods-flat", 1.8, () -> {
+            set.accept(dev.coolclient.core.modules.visual.WorldOverlays.LootBeams.class, false);
+            set.accept(dev.coolclient.core.modules.visual.RenderTweaks.UhcOverlay.class, false);
+            set.accept(dev.coolclient.core.modules.visual.RenderTweaks.FlatItems.class, true);
+            cmd(look(modern, 40, 20));
+        }, null));
+        steps.add(once(() -> {
+            set.accept(dev.coolclient.core.modules.visual.RenderTweaks.FlatItems.class, false);
+            cmd(modern ? killAll("minecraft:item") : "/kill @e[type=Item]");
+        }));
+
+        // Light levels at night (yellow: mobs could spawn here once it's dark).
+        steps.add(clip("mods-light", 1.8, () -> {
+            cmd("/time set 18000", look(modern, 0, 45));
+            set.accept(dev.coolclient.core.modules.visual.WorldOverlays.LightOverlay.class, true);
+        }, null));
+        steps.add(once(() -> {
+            set.accept(dev.coolclient.core.modules.visual.WorldOverlays.LightOverlay.class, false);
+            cmd("/time set 6000");
+        }));
+
+        // Mob outline on a zombie under the crosshair.
+        steps.add(once(() -> cmd(modern ? zombie(0, 2.4) : "/summon Zombie ~0 ~0 ~2.4 {NoAI:1,Silent:1}",
+                look(modern, 0, 18))));
+        steps.add(clip("mods-outline", 1.8, () -> {
+            Module o = mod.apply(dev.coolclient.core.modules.visual.WorldOverlays.MobOutline.class);
+            if (o != null) {
+                for (Setting<?> s : o.settings()) if (s.name().equals("Fill")) ((dev.coolclient.core.setting.BoolSetting) s).set(true);
+                o.setEnabled(true);
+            }
+        }, null));
+        steps.add(once(() -> {
+            set.accept(dev.coolclient.core.modules.visual.WorldOverlays.MobOutline.class, false);
+            cmd(modern ? voidZombies() : "/kill @e[type=Zombie]");
+        }));
+
+        // Glint: vanilla, then red, on the sword in hand and the chestplate from the front.
+        steps.add(once(() -> cmd(look(modern, 0, 4))));
+        steps.add(clip("mods-glint-off", 1.4, null, null));
+        steps.add(clip("mods-glint-red", 1.6, () -> {
+            dev.coolclient.core.modules.visual.RenderTweaks.Glint g =
+                    (dev.coolclient.core.modules.visual.RenderTweaks.Glint) mod.apply(dev.coolclient.core.modules.visual.RenderTweaks.Glint.class);
+            if (g != null) {
+                g.color.set(0xFFFF3030);
+                g.setEnabled(true);
+            }
+        }, null));
+        final ArmorStatusHud armorHud = a.modules().get(ArmorStatusHud.class);
+        final boolean armorHudWas = armorHud != null && armorHud.isEnabledRaw();
+        steps.add(clip("mods-glint-armor-off", 1.6, () -> {
+            set.accept(dev.coolclient.core.modules.visual.RenderTweaks.Glint.class, false);
+            if (armorHud != null) armorHud.setEnabled(true);
+            a.platform().game().setPerspective(2);
+        }, null));
+        steps.add(clip("mods-glint-armor", 1.6, () -> set.accept(dev.coolclient.core.modules.visual.RenderTweaks.Glint.class, true), null));
+        steps.add(once(() -> {
+            a.platform().game().setPerspective(0);
+            if (armorHud != null) armorHud.setEnabled(armorHudWas);
+            set.accept(dev.coolclient.core.modules.visual.RenderTweaks.Glint.class, false);
+        }));
+
+        // Armor Bar: the armor row coloured by material (gold, diamond, iron, leather), the enchanted chestplate pulsing.
+        steps.add(clip("mods-armorbar-off", 1.0, () -> cmd(look(modern, 0, 4)), null));
+        steps.add(clip("mods-armorbar-on", 1.6, () -> set.accept(dev.coolclient.core.modules.visual.RenderTweaks.ArmorBar.class, true), null));
+        steps.add(once(() -> set.accept(dev.coolclient.core.modules.visual.RenderTweaks.ArmorBar.class, false)));
+
+        // Fog: the superflat horizon with vanilla fog, then without.
+        steps.add(once(() -> cmd(look(modern, 0, -3))));
+        steps.add(clip("mods-fog-off", 1.2, null, null));
+        steps.add(clip("mods-fog-on", 1.4, () -> {
+            Module f = mod.apply(dev.coolclient.core.modules.visual.RenderTweaks.Fog.class);
+            if (f != null) {
+                ((dev.coolclient.core.modules.visual.RenderTweaks.Fog) f).distance.set(30.0);
+                f.setEnabled(true);
+            }
+        }, null));
+        steps.add(once(() -> set.accept(dev.coolclient.core.modules.visual.RenderTweaks.Fog.class, false)));
+
+        // Colour grading: vivid, then black and white.
+        steps.add(once(() -> cmd(look(modern, 20, 8))));
+        steps.add(clip("mods-grade-vivid", 1.2, () -> {
+            dev.coolclient.core.modules.visual.RenderTweaks.ColorGrading g =
+                    (dev.coolclient.core.modules.visual.RenderTweaks.ColorGrading) mod.apply(dev.coolclient.core.modules.visual.RenderTweaks.ColorGrading.class);
+            if (g != null) {
+                g.saturation.set(190.0);
+                g.contrast.set(115.0);
+                g.setEnabled(true);
+            }
+        }, null));
+        steps.add(clip("mods-grade-mono", 1.2, () -> {
+            dev.coolclient.core.modules.visual.RenderTweaks.ColorGrading g =
+                    (dev.coolclient.core.modules.visual.RenderTweaks.ColorGrading) mod.apply(dev.coolclient.core.modules.visual.RenderTweaks.ColorGrading.class);
+            if (g != null) g.saturation.set(0.0);
+        }, null));
+        steps.add(once(() -> set.accept(dev.coolclient.core.modules.visual.RenderTweaks.ColorGrading.class, false)));
+
+        // Menu blur behind the vanilla options screen.
+        steps.add(clip("mods-blur-off", 1.2, () -> a.platform().openVanilla(dev.coolclient.core.api.VanillaScreen.OPTIONS, null), null));
+        steps.add(clip("mods-blur-on", 1.4, () -> {
+            set.accept(dev.coolclient.core.modules.visual.RenderTweaks.MenuBlur.class, true);
+            a.platform().openVanilla(dev.coolclient.core.api.VanillaScreen.OPTIONS, null);
+        }, null));
+        steps.add(once(() -> {
+            a.platform().openScreen(null);
+            set.accept(dev.coolclient.core.modules.visual.RenderTweaks.MenuBlur.class, false);
+        }));
+
+        // Titles: full size, then at half.
+        final String title = modern ? "/title @s title {\"text\":\"Victory!\",\"color\":\"gold\"}" : "/title @p title {\"text\":\"Victory!\",\"color\":\"gold\"}";
+        steps.add(clip("mods-title-off", 1.4, () -> cmd(title), null));
+        steps.add(clip("mods-title-on", 1.4, () -> {
+            set.accept(dev.coolclient.core.modules.visual.RenderTweaks.Titles.class, true);
+            cmd(title);
+        }, null));
+        steps.add(once(() -> set.accept(dev.coolclient.core.modules.visual.RenderTweaks.Titles.class, false)));
+        steps.add(pause(2.0));
+
+        // Camera: third-person back view at the vanilla 4 blocks, then 9.
+        steps.add(clip("mods-camera-off", 1.2, () -> a.platform().game().setPerspective(1), null));
+        steps.add(clip("mods-camera-on", 1.4, () -> {
+            Module c = mod.apply(dev.coolclient.core.modules.visual.RenderTweaks.Camera.class);
+            if (c != null) {
+                ((dev.coolclient.core.modules.visual.RenderTweaks.Camera) c).distance.set(9.0);
+                c.setEnabled(true);
+            }
+        }, null));
+        steps.add(once(() -> {
+            a.platform().game().setPerspective(0);
+            set.accept(dev.coolclient.core.modules.visual.RenderTweaks.Camera.class, false);
+        }));
+
+        // Weather Changer: client-side rain under a clear sky.
+        steps.add(clip("mods-weather-rain", 2.0, () -> {
+            VisualTweaks.WeatherChanger w = (VisualTweaks.WeatherChanger) mod.apply(VisualTweaks.WeatherChanger.class);
+            if (w != null) {
+                w.weather.set("Rain");
+                w.setEnabled(true);
+            }
+            cmd(look(modern, 0, -10));
+        }, null));
+
+        // Leave every module as it was, with default settings.
+        steps.add(once(() -> {
+            for (Module m : mods) {
+                for (Setting<?> s : m.settings()) s.reset();
+                Boolean on = was.get(m);
+                m.setEnabled(on != null && on);
+            }
+            a.platform().openScreen(null);
+            a.platform().game().setPerspective(0);
         }));
     }
 

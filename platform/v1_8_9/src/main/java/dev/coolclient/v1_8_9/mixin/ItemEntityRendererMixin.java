@@ -19,7 +19,7 @@ public abstract class ItemEntityRendererMixin {
     @Inject(method = "method_10221", at = @At("HEAD"), cancellable = true)
     private void cool$physics(ItemEntity item, double x, double y, double z, float tickDelta, BakedModel model,
                                 CallbackInfoReturnable<Integer> cir) {
-        if (!Hooks189.ready()) return;
+        if (!Hooks189.ready() || dev.coolclient.core.modules.visual.RenderTweaks.FlatItems.on()) return;
         VisualTweaks.ItemPhysics p = CoolClient.get().modules().get(VisualTweaks.ItemPhysics.class);
         if (p == null || !p.isEnabled()) return;
         ItemStack stack = item.getItemStack();
@@ -41,6 +41,35 @@ public abstract class ItemEntityRendererMixin {
             GlStateManager.rotate(spin * 0.7f, 1f, 0f, 0f);
         }
         GlStateManager.color(1f, 1f, 1f, 1f);
+        cool$uhc(item);
         cir.setReturnValue(count);
+    }
+
+    /** UHC Overlay: bigger gold, golden apples and heads. Also runs after the vanilla transform. */
+    @Inject(method = "method_10221", at = @At("RETURN"))
+    private void cool$uhcVanilla(ItemEntity item, double x, double y, double z, float tickDelta, BakedModel model,
+                                 CallbackInfoReturnable<Integer> cir) {
+        cool$uhc(item);
+    }
+
+    @org.spongepowered.asm.mixin.Unique
+    private static void cool$uhc(ItemEntity item) {
+        if (!Hooks189.ready() || item.getItemStack() == null || item.getItemStack().getItem() == null) return;
+        String id = String.valueOf(net.minecraft.item.Item.REGISTRY.getIdentifier(item.getItemStack().getItem()));
+        float s = dev.coolclient.core.modules.visual.RenderTweaks.UhcOverlay.scale(id);
+        if (s != 1f) GlStateManager.scale(s, s, s);
+    }
+
+    /** 2D Items: replace the spin with a turn toward the camera. */
+    @org.spongepowered.asm.mixin.injection.Redirect(method = "method_10221", at = @At(value = "INVOKE",
+            target = "Lcom/mojang/blaze3d/platform/GlStateManager;rotate(FFFF)V"))
+    private void cool$flat(float angle, float x, float y, float z) {
+        if (Hooks189.ready() && dev.coolclient.core.modules.visual.RenderTweaks.FlatItems.on()) {
+            net.minecraft.client.render.entity.EntityRenderDispatcher d = net.minecraft.client.MinecraftClient.getInstance().getEntityRenderManager();
+            GlStateManager.rotate(180f - d.yaw, 0f, 1f, 0f);
+            GlStateManager.rotate(-d.pitch, 1f, 0f, 0f);
+            return;
+        }
+        GlStateManager.rotate(angle, x, y, z);
     }
 }

@@ -23,6 +23,53 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class GuiMixin {
     @Unique private boolean cool$scaled;
 
+    @Inject(method = "render", at = @At("HEAD"))
+    private void cool$postWorld(GuiGraphics g, DeltaTracker delta, CallbackInfo ci) {
+        Hooks21.postWorld(g);
+    }
+
+    /** Attack Indicator's "Hide Vanilla Indicator": read the attack indicator option as OFF. */
+    @Redirect(method = {"renderCrosshair", "renderItemHotbar"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/OptionInstance;get()Ljava/lang/Object;"))
+    private Object cool$attackIndicator(net.minecraft.client.OptionInstance<?> option) {
+        Object v = option.get();
+        if (v instanceof net.minecraft.client.AttackIndicatorStatus && Hooks21.ready()) {
+            dev.coolclient.core.modules.hud.AttackIndicatorHud a = CoolClient.get().modules().get(dev.coolclient.core.modules.hud.AttackIndicatorHud.class);
+            if (a != null && a.replacesVanilla()) return net.minecraft.client.AttackIndicatorStatus.OFF;
+        }
+        return v;
+    }
+
+    // ---------------------------------------------------------------- titles
+
+    @Inject(method = "renderTitle", at = @At("HEAD"), cancellable = true)
+    private void cool$titleHide(GuiGraphics g, DeltaTracker delta, CallbackInfo ci) {
+        if (Hooks21.ready() && dev.coolclient.core.modules.visual.RenderTweaks.Titles.factor() <= 0f) ci.cancel();
+    }
+
+    @Redirect(method = "renderTitle", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;scale(FFF)V"))
+    private void cool$titleScale(com.mojang.blaze3d.vertex.PoseStack pose, float x, float y, float z) {
+        float f = Hooks21.ready() ? dev.coolclient.core.modules.visual.RenderTweaks.Titles.factor() : 1f;
+        pose.scale(x * f, y * f, z);
+    }
+
+    // ---------------------------------------------------------------- armor bar
+
+    @Unique private static int cool$armorLeft;
+
+    @Inject(method = "renderArmor", at = @At("HEAD"))
+    private static void cool$armorStart(GuiGraphics g, net.minecraft.world.entity.player.Player player, int i, int j, int k, int l, CallbackInfo ci) {
+        cool$armorLeft = l;
+    }
+
+    @Redirect(method = "renderArmor", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/GuiGraphics;blitSprite(Ljava/util/function/Function;Lnet/minecraft/resources/ResourceLocation;IIII)V"))
+    private static void cool$armorIcon(GuiGraphics g, java.util.function.Function<net.minecraft.resources.ResourceLocation, net.minecraft.client.renderer.RenderType> type,
+                                       net.minecraft.resources.ResourceLocation sprite, int x, int y, int w, int h) {
+        int tint = Hooks21.ready() ? dev.coolclient.core.modules.visual.RenderTweaks.ArmorBar.tint((x - cool$armorLeft) / 8) : -1;
+        if (tint == -1) g.blitSprite(type, sprite, x, y, w, h);
+        else g.blitSprite(type, sprite, x, y, w, h, tint);
+    }
+
     @Inject(method = "render", at = @At("TAIL"))
     private void cool$render(GuiGraphics g, DeltaTracker delta, CallbackInfo ci) {
         Hooks21.renderHud(g, delta.getGameTimeDeltaPartialTick(false));

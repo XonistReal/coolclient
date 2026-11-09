@@ -105,4 +105,49 @@ public interface GameState {
 
     /** UUIDs of players currently loaded in the world (for cosmetics lookups). */
     List<UUID> loadedPlayers();
+
+    // ---------------------------------------------------------------- extra info for the newer modules
+
+    /** Absorption (golden hearts), in health points. */
+    default float absorption() { return 0f; }
+
+    /** Attack cooldown charge, 0..1 (always 1 on versions without attack cooldowns). */
+    default float attackCharge() { return 1f; }
+
+    /** True while gliding with an elytra. */
+    default boolean gliding() { return false; }
+
+    /** True while riding something (horse, boat, minecart ...). */
+    default boolean riding() { return false; }
+
+    /**
+     * Stats of the horse-like mount being ridden: {speed in blocks/s, jump height in blocks, health,
+     * max health}, or null when not riding one.
+     */
+    default double[] mountStats() { return null; }
+
+    /** A living entity by id, or null if it isn't loaded (or isn't living). */
+    default LivingInfo living(int entityId) { return null; }
+
+    /** The block under the crosshair (within reach), or null. */
+    default BlockInfo targetBlock() { return null; }
+
+    /** Bounding box {minX, minY, minZ, maxX, maxY, maxZ} of the entity under the crosshair, or null. */
+    default double[] targetEntityBox(float partialTicks) { return null; }
+
+    /** Every non-empty stack in the main inventory and offhand (not armor). */
+    default List<ItemRef> inventory() { return java.util.Collections.emptyList(); }
+
+    /** Primed TNT that's loaded. */
+    default List<WorldEntity> primedTnt(float partialTicks) { return java.util.Collections.emptyList(); }
+
+    /** Dropped items within {@code range} blocks of the player. */
+    default List<WorldEntity> droppedItems(float partialTicks, double range) { return java.util.Collections.emptyList(); }
+
+    /**
+     * Spots around the player where a mob could stand: a solid floor with two blocks of room above,
+     * within {@code radius} horizontally and {@code height} vertically. Packed as five ints per spot:
+     * x, y (the air block above the floor), z, block light, sky light.
+     */
+    default int[] spawnSpots(int radius, int height) { return new int[0]; }
 }

@@ -5,4 +5,8 @@ public interface ItemStateDuck {
     boolean cool$onGround();
 
     void cool$setOnGround(boolean onGround);
+
+    String cool$itemId();
+
+    void cool$setItemId(String id);
 }

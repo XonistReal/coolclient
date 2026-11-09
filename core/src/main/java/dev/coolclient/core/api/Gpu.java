@@ -56,4 +56,13 @@ public interface Gpu {
     int framebufferWidth();
 
     int framebufferHeight();
+
+    /**
+     * Copies the frame so far into a plain texture kept for {@code slot} (no mipmaps), for post
+     * effects that need an earlier frame (motion blur). Returns its GL name, or 0 if unsupported.
+     */
+    default int copyFrame(int slot) { return 0; }
+
+    /** The texture {@link #copyFrame} last filled for {@code slot}, without copying again (0 if none). */
+    default int keptFrame(int slot) { return 0; }
 }

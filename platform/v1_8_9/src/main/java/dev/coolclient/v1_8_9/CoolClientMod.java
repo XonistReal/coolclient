@@ -41,6 +41,11 @@ public class CoolClientMod implements ClientModInitializer {
             private ExecutorService writers;
 
             @Override
+            public void auditMixins() {
+                org.spongepowered.asm.mixin.MixinEnvironment.getCurrentEnvironment().audit();
+            }
+
+            @Override
             public void screenshot(String name) {
                 MinecraftClient mc = MinecraftClient.getInstance();
                 Framebuffer fb = mc.getFramebuffer();

@@ -23,5 +23,9 @@ public enum Feature {
     /** Elytra texture follows cape. */
     ELYTRA,
     /** Post-processing motion blur. */
-    MOTION_BLUR
+    MOTION_BLUR,
+    /** The 1.9+ attack cooldown. */
+    ATTACK_COOLDOWN,
+    /** Shulker boxes (1.11+), for the tooltip preview. */
+    SHULKER_BOXES
 }

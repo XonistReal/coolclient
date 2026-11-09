@@ -43,6 +43,26 @@ import dev.coolclient.core.modules.visual.ToggleSprint;
 import dev.coolclient.core.modules.visual.ViewModel;
 import dev.coolclient.core.modules.visual.VisualTweaks;
 import dev.coolclient.core.modules.visual.Zoom;
+import dev.coolclient.core.modules.hud.AttackIndicatorHud;
+import dev.coolclient.core.modules.hud.BlockInfoHud;
+import dev.coolclient.core.modules.hud.HeldItemInfoHud;
+import dev.coolclient.core.modules.hud.HorseStatsHud;
+import dev.coolclient.core.modules.hud.MouseStrokesHud;
+import dev.coolclient.core.modules.hud.PaperdollHud;
+import dev.coolclient.core.modules.hud.PickupLogHud;
+import dev.coolclient.core.modules.hud.SystemInfoHud;
+import dev.coolclient.core.modules.hud.TargetHud;
+import dev.coolclient.core.modules.hud.TpsHud;
+import dev.coolclient.core.modules.utility.DeathInfo;
+import dev.coolclient.core.modules.utility.LogCleaner;
+import dev.coolclient.core.modules.utility.Screenshots;
+import dev.coolclient.core.modules.utility.UtilityTweaks;
+import dev.coolclient.core.modules.utility.WorldBackups;
+import dev.coolclient.core.modules.visual.AutoPerspective;
+import dev.coolclient.core.modules.visual.HitMarkers;
+import dev.coolclient.core.modules.visual.RenderTweaks;
+import dev.coolclient.core.modules.visual.Snaplook;
+import dev.coolclient.core.modules.visual.WorldOverlays;
 
 /** The full module list. Version-gated modules are filtered by {@link ModuleManager#register}. */
 public final class Modules {
@@ -77,6 +97,16 @@ public final class Modules {
         m.register(new CustomTextHud());
         m.register(new CpsGraphHud());
         m.register(new DurabilityAlertsHud());
+        m.register(new TargetHud());
+        m.register(new TpsHud());
+        m.register(new SystemInfoHud());
+        m.register(new MouseStrokesHud());
+        m.register(new PaperdollHud());
+        m.register(new BlockInfoHud());
+        m.register(new PickupLogHud());
+        m.register(new HeldItemInfoHud());
+        m.register(new HorseStatsHud());
+        m.register(new UtilityTweaks.AutoHideHud());
 
         // Combat
         m.register(new VisualTweaks.HitColor());
@@ -89,6 +119,8 @@ public final class Modules {
         m.register(new CrystalPvpTweaks.TotemPopAnimation());
         m.register(new CrystalPvpTweaks.ShieldTweaks());
         m.register(new CrystalPvpTweaks.CrystalTweaks());
+        m.register(new AttackIndicatorHud());
+        m.register(new HitMarkers());
 
         // Visual
         m.register(new HandChams());
@@ -105,11 +137,27 @@ public final class Modules {
         m.register(new VisualTweaks.WeatherChanger());
         m.register(new VisualTweaks.FovChanger());
         m.register(new VisualTweaks.Bobbing());
+        m.register(new RenderTweaks.Glint());
+        m.register(new RenderTweaks.Fog());
+        m.register(new RenderTweaks.ColorGrading());
+        m.register(new RenderTweaks.MenuBlur());
+        m.register(new RenderTweaks.Titles());
+        m.register(new RenderTweaks.Camera());
+        m.register(new RenderTweaks.ArmorBar());
+        m.register(new RenderTweaks.UhcOverlay());
+        m.register(new RenderTweaks.FlatItems());
+        m.register(new WorldOverlays.ChunkBorders());
+        m.register(new WorldOverlays.TntTimer());
+        m.register(new WorldOverlays.LootBeams());
+        m.register(new WorldOverlays.LightOverlay());
+        m.register(new WorldOverlays.MobOutline());
 
         // Mechanic
         m.register(new Zoom());
         m.register(new Freelook());
         m.register(new ToggleSprint());
+        m.register(new Snaplook());
+        m.register(new AutoPerspective());
 
         // Utility
         m.register(new AutoGG());
@@ -121,6 +169,15 @@ public final class Modules {
         m.register(new UtilityModules.NickHider());
         m.register(new UtilityModules.Waypoints());
         m.register(new LegacyModules.Borderless());
+        m.register(new UtilityTweaks.DropProtection());
+        m.register(new UtilityTweaks.ToastControl());
+        m.register(new UtilityTweaks.Reconnect());
+        m.register(new UtilityTweaks.Tooltips());
+        m.register(new UtilityTweaks.Sounds());
+        m.register(new DeathInfo());
+        m.register(new WorldBackups());
+        m.register(new Screenshots());
+        m.register(new LogCleaner());
 
         // Performance
         m.register(new PerformanceModules.EntityCulling());

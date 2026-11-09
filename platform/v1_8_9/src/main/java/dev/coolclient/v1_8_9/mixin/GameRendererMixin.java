@@ -71,7 +71,26 @@ public abstract class GameRendererMixin {
 
     @Inject(method = "renderWorld(IFJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/render/GameRenderer;renderHand(FI)V"))
     private void cool$world(int pass, float tickDelta, long limitTime, CallbackInfo ci) {
-        if (Hooks189.ready()) World3D189.waypoints(tickDelta);
+        if (!Hooks189.ready()) return;
+        World3D189.waypoints(tickDelta);
+        dev.coolclient.v1_8_9.WorldDraw189.post(tickDelta);
+    }
+
+    /** After the world, before the HUD (and even with F1): colour grading and other full-screen effects. */
+    @Inject(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/render/GameRenderer;renderWorld(FJ)V", shift = At.Shift.AFTER))
+    private void cool$postWorld(float tickDelta, long nanoTime, CallbackInfo ci) {
+        Hooks189.postWorld();
+    }
+
+    /** Camera module: third-person distance (vanilla 4 blocks). */
+    @Redirect(method = "transformCamera", at = @At(value = "FIELD", target = "Lnet/minecraft/client/render/GameRenderer;thirdPersonDistance:F", opcode = Opcodes.GETFIELD))
+    private float cool$distance(GameRenderer self) {
+        return Hooks189.ready() ? dev.coolclient.core.modules.visual.RenderTweaks.Camera.thirdPersonDistance() : 4f;
+    }
+
+    @Redirect(method = "transformCamera", at = @At(value = "FIELD", target = "Lnet/minecraft/client/render/GameRenderer;lastThirdPersonDistance:F", opcode = Opcodes.GETFIELD))
+    private float cool$lastDistance(GameRenderer self) {
+        return Hooks189.ready() ? dev.coolclient.core.modules.visual.RenderTweaks.Camera.thirdPersonDistance() : 4f;
     }
 
     @Redirect(method = "updateLightmap", at = @At(value = "FIELD", target = "Lnet/minecraft/client/option/GameOptions;gamma:F", opcode = Opcodes.GETFIELD))

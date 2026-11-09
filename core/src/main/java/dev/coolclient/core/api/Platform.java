@@ -63,4 +63,16 @@ public interface Platform {
 
     /** Pause/resume animated block textures (platforms with {@link Feature#TEXTURE_ANIMATIONS}). */
     default void setTextureAnimations(boolean enabled) {}
+
+    /** The graphics card as the driver names it (GL_RENDERER), or null. */
+    default String gpuName() { return null; }
+
+    /** Folder of the singleplayer world being played, or null on a server or in menus. */
+    default File singleplayerWorldDir() { return null; }
+
+    /** Joins the last multiplayer server again (from the disconnect screen). */
+    default void reconnect() {}
+
+    /** True if there is a last server to reconnect to. */
+    default boolean canReconnect() { return false; }
 }

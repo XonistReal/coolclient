@@ -49,7 +49,7 @@ const REMOTE = CATALOG_FILE.remote || {};
 /** Named sets for admin grants ("booster"): their items, and optionally the seasonal drops on right now. */
 const BUNDLES = CATALOG_FILE.bundles || {};
 
-const VERSION = '0.1.6-beta';
+const VERSION = '0.1.7-beta';
 const FOUNDER_ITEM = 'cape_founder';
 const MEDIA = 'media';
 const OWNER = 'owner';

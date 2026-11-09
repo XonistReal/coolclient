@@ -18,4 +18,13 @@ public abstract class ArmorFeatureRendererMixin {
         LegacyModules.OldAnimations o = CoolClient.get().modules().get(LegacyModules.OldAnimations.class);
         if (o != null && o.isEnabled() && o.armorDamage.on()) cir.setReturnValue(true);
     }
+
+    /** Glint colour on worn armor: the purple colour call inside the glint loop. */
+    @org.spongepowered.asm.mixin.injection.Redirect(method = "renderGlint", at = @At(value = "INVOKE",
+            target = "Lcom/mojang/blaze3d/platform/GlStateManager;color(FFFF)V", ordinal = 1))
+    private void cool$glint(float r, float g, float b, float a) {
+        float[] f = Hooks189.ready() ? Hooks189.glintFactors() : null;
+        if (f == null) com.mojang.blaze3d.platform.GlStateManager.color(r, g, b, a);
+        else com.mojang.blaze3d.platform.GlStateManager.color(Math.min(1f, r * f[0]), Math.min(1f, g * f[1]), Math.min(1f, b * f[2]), a);
+    }
 }

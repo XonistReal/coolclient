@@ -27,6 +27,26 @@ public abstract class InGameHudMixin {
         Hooks189.renderHud(tickDelta);
     }
 
+    /** Titles: the only two scale calls in render() are the title (4x) and subtitle (2x). Scale 0 hides them. */
+    @Redirect(method = "render", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/platform/GlStateManager;scale(FFF)V"))
+    private void cool$titleScale(float x, float y, float z) {
+        float f = Hooks189.ready() ? dev.coolclient.core.modules.visual.RenderTweaks.Titles.factor() : 1f;
+        GlStateManager.scale(x * f, y * f, z);
+    }
+
+    /** Armor Bar: armor icons are the 9x9 sprites at v = 9 (u 16 empty, 25 half, 34 full). */
+    @Redirect(method = "renderStatusBars", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/hud/InGameHud;drawTexture(IIIIII)V"))
+    private void cool$armorIcon(InGameHud hud, int x, int y, int u, int v, int w, int h) {
+        int tint = -1;
+        if (v == 9 && (u == 16 || u == 25 || u == 34) && Hooks189.ready()) {
+            int left = new Window(net.minecraft.client.MinecraftClient.getInstance()).getWidth() / 2 - 91;
+            tint = dev.coolclient.core.modules.visual.RenderTweaks.ArmorBar.tint((x - left) / 8);
+        }
+        if (tint != -1) GlStateManager.color(((tint >> 16) & 0xFF) / 255f, ((tint >> 8) & 0xFF) / 255f, (tint & 0xFF) / 255f, 1f);
+        hud.drawTexture(x, y, u, v, w, h);
+        if (tint != -1) GlStateManager.color(1f, 1f, 1f, 1f);
+    }
+
     @Inject(method = "showCrosshair", at = @At("HEAD"), cancellable = true)
     private void cool$crosshair(CallbackInfoReturnable<Boolean> cir) {
         if (Hooks189.ready() && CoolClient.get().modules().active(Crosshair.class)) cir.setReturnValue(false);

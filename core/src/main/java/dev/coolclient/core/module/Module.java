@@ -17,7 +17,7 @@ import java.util.Map;
 
 /** Base class for every CoolClient module. */
 public abstract class Module implements EventBus.Owner {
-    private final String id;
+    private String id;
     private final String name;
     private final String description;
     private final Category category;
@@ -42,6 +42,9 @@ public abstract class Module implements EventBus.Owner {
     // ------------------------------------------------------------------ identity
 
     public String id() { return id; }
+
+    /** Keeps the config id of a module that was renamed, so saved settings still load. */
+    protected void keepId(String oldId) { this.id = oldId; }
 
     public String name() { return name; }
 

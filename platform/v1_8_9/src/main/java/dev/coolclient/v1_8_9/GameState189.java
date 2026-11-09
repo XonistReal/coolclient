@@ -1,8 +1,25 @@
 package dev.coolclient.v1_8_9;
 
+import dev.coolclient.core.api.BlockInfo;
 import dev.coolclient.core.api.EffectInfo;
 import dev.coolclient.core.api.GameState;
 import dev.coolclient.core.api.ItemRef;
+import dev.coolclient.core.api.LivingInfo;
+import dev.coolclient.core.api.WorldEntity;
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.material.Material;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.ItemEntity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.TntEntity;
+import net.minecraft.entity.attribute.EntityAttributes;
+import net.minecraft.entity.passive.HorseBaseEntity;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.math.Box;
+import net.minecraft.world.LightType;
+import net.minecraft.world.World;
 import dev.coolclient.core.util.Keys;
 import dev.coolclient.v1_8_9.mixin.KeyBindingAccessor;
 import net.minecraft.client.MinecraftClient;
@@ -219,5 +236,122 @@ final class GameState189 implements GameState {
         List<UUID> out = new ArrayList<UUID>();
         for (PlayerEntity p : mc().world.playerEntities) out.add(p.getUuid());
         return out;
+    }
+
+    // ---------------------------------------------------------------- extra info for the newer modules
+
+    @Override public float absorption() { return player() == null ? 0f : player().getAbsorption(); }
+
+    @Override public boolean riding() { return player() != null && player().hasVehicle(); }
+
+    @Override
+    public double[] mountStats() {
+        if (player() == null || !(player().vehicle instanceof HorseBaseEntity)) return null;
+        HorseBaseEntity h = (HorseBaseEntity) player().vehicle;
+        double speed = h.initializeAttribute(EntityAttributes.GENERIC_MOVEMENT_SPEED).getValue() * 42.16;
+        double j = h.getJumpStrength();
+        // Fitted curve from jump strength to blocks (the widely used horse-stats formula).
+        double jump = -0.1817584952 * j * j * j + 3.689713992 * j * j + 2.128599134 * j - 0.343930367;
+        return new double[] {speed, Math.max(0, jump), h.getHealth(), h.getMaxHealth()};
+    }
+
+    @Override
+    public LivingInfo living(int entityId) {
+        if (mc().world == null || player() == null) return null;
+        Entity e = mc().world.getEntityById(entityId);
+        if (!(e instanceof LivingEntity)) return null;
+        LivingEntity l = (LivingEntity) e;
+        return new LivingInfo(l.getTranslationKey(), l.getHealth(), l.getMaxHealth(), l.getAbsorption(),
+                player().distanceTo(l), l instanceof PlayerEntity, l.getArmorProtectionValue());
+    }
+
+    @Override
+    public BlockInfo targetBlock() {
+        BlockHitResult hit = mc().result;
+        if (mc().world == null || hit == null || hit.type != BlockHitResult.Type.BLOCK || hit.getBlockPos() == null) return null;
+        BlockPos pos = hit.getBlockPos();
+        BlockState s = mc().world.getBlockState(pos);
+        Block b = s.getBlock();
+        if (b.getMaterial() == Material.AIR) return null;
+        Item pick = b.getPickItem(mc().world, pos);
+        ItemStack icon = pick == null ? null : new ItemStack(pick, 1, b.getMeta(mc().world, pos));
+        String name = icon != null ? icon.getCustomName() : b.getTranslatedName();
+        Object id = Block.REGISTRY.getIdentifier(b);
+        return new BlockInfo(id == null ? "minecraft:unknown" : id.toString(), name, ItemRef189.of(icon), pos.getX(), pos.getY(), pos.getZ());
+    }
+
+    @Override
+    public double[] targetEntityBox(float pt) {
+        BlockHitResult hit = mc().result;
+        if (hit == null || hit.entity == null) return null;
+        Entity e = hit.entity;
+        Box b = e.getBoundingBox().offset((e.prevX - e.x) * (1 - pt), (e.prevY - e.y) * (1 - pt), (e.prevZ - e.z) * (1 - pt));
+        return new double[] {b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ};
+    }
+
+    @Override
+    public List<ItemRef> inventory() {
+        if (player() == null) return Collections.emptyList();
+        List<ItemRef> out = new ArrayList<ItemRef>();
+        for (ItemStack s : player().inventory.main) if (s != null && s.getItem() != null && s.count > 0) out.add(ItemRef189.of(s));
+        return out;
+    }
+
+    private static double lerp(float pt, double prev, double now) { return prev + (now - prev) * pt; }
+
+    @Override
+    public List<WorldEntity> primedTnt(float pt) {
+        if (mc().world == null) return Collections.emptyList();
+        List<WorldEntity> out = new ArrayList<WorldEntity>();
+        for (Entity e : mc().world.loadedEntities) {
+            if (!(e instanceof TntEntity)) continue;
+            out.add(new WorldEntity(lerp(pt, e.prevX, e.x), lerp(pt, e.prevY, e.y), lerp(pt, e.prevZ, e.z), e.height,
+                    ItemRef.EMPTY, ((TntEntity) e).fuseTimer));
+        }
+        return out;
+    }
+
+    @Override
+    public List<WorldEntity> droppedItems(float pt, double range) {
+        if (mc().world == null || player() == null) return Collections.emptyList();
+        List<WorldEntity> out = new ArrayList<WorldEntity>();
+        double r2 = range * range;
+        for (Entity e : mc().world.loadedEntities) {
+            if (!(e instanceof ItemEntity) || e.squaredDistanceTo(player()) > r2) continue;
+            out.add(new WorldEntity(lerp(pt, e.prevX, e.x), lerp(pt, e.prevY, e.y), lerp(pt, e.prevZ, e.z), e.height,
+                    ItemRef189.of(((ItemEntity) e).getItemStack()), 0));
+        }
+        return out;
+    }
+
+    /** Room for a mob's body: nothing solid and no liquid. */
+    private static boolean open(Block b) {
+        Material m = b.getMaterial();
+        return !m.blocksMovement() && m != Material.WATER && m != Material.LAVA;
+    }
+
+    @Override
+    public int[] spawnSpots(int radius, int height) {
+        World w = mc().world;
+        if (w == null || player() == null) return new int[0];
+        int px = (int) Math.floor(player().x), py = (int) Math.floor(player().y), pz = (int) Math.floor(player().z);
+        int[] buf = new int[1024 * 5];
+        int n = 0;
+        for (int dx = -radius; dx <= radius; dx++)
+            for (int dz = -radius; dz <= radius; dz++)
+                for (int dy = -height; dy <= height; dy++) {
+                    BlockPos floor = new BlockPos(px + dx, py + dy - 1, pz + dz);
+                    Block f = w.getBlockState(floor).getBlock();
+                    if (f == Blocks.BEDROCK || f == Blocks.BARRIER || !World.isOpaque(w, floor)) continue;
+                    BlockPos air = floor.up(), head = air.up();
+                    if (!open(w.getBlockState(air).getBlock()) || !open(w.getBlockState(head).getBlock())) continue;
+                    if (n + 5 > buf.length) buf = java.util.Arrays.copyOf(buf, buf.length * 2);
+                    buf[n++] = air.getX();
+                    buf[n++] = air.getY();
+                    buf[n++] = air.getZ();
+                    buf[n++] = w.getLightAtPos(LightType.BLOCK, air);
+                    buf[n++] = w.getLightAtPos(LightType.SKY, air);
+                }
+        return java.util.Arrays.copyOf(buf, n);
     }
 }

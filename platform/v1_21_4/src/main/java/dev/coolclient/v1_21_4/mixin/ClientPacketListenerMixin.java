@@ -28,6 +28,7 @@ public abstract class ClientPacketListenerMixin {
         if (!Hooks21.ready()) return;
         Minecraft mc = Minecraft.getInstance();
         String server = mc.isSingleplayer() || mc.getCurrentServer() == null ? null : mc.getCurrentServer().ip;
+        if (server != null) dev.coolclient.v1_21_4.Platform21.lastServer = mc.getCurrentServer();
         CoolClient.get().onWorldJoin(server);
     }
 
@@ -61,5 +62,11 @@ public abstract class ClientPacketListenerMixin {
     private void cool$damage(ClientboundDamageEventPacket packet, CallbackInfo ci) {
         Minecraft mc = Minecraft.getInstance();
         if (Hooks21.ready() && mc.player != null && packet.entityId() == mc.player.getId()) CoolClient.get().onSelfHurt();
+    }
+
+    /** Vanilla sends the world time every 20 server ticks; TPS is worked out from it. */
+    @Inject(method = "handleSetTime", at = @At("TAIL"))
+    private void cool$time(net.minecraft.network.protocol.game.ClientboundSetTimePacket packet, CallbackInfo ci) {
+        if (Hooks21.ready()) CoolClient.get().events().post(new dev.coolclient.core.event.Events.ServerTime(packet.gameTime()));
     }
 }

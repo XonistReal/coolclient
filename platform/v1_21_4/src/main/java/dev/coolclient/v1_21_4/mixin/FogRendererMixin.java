@@ -30,4 +30,30 @@ public abstract class FogRendererMixin {
         Vector4f v = cir.getReturnValue();
         v.set(((c >> 16) & 0xFF) / 255f, ((c >> 8) & 0xFF) / 255f, (c & 0xFF) / 255f, v.w);
     }
+
+    /** Fog module: distance fog pushed back or removed, clearer water. Lava, powder snow and blindness/darkness stay vanilla. */
+    @Inject(method = "setupFog", at = @At("RETURN"), cancellable = true)
+    private static void cool$fog(Camera camera, FogRenderer.FogMode mode, Vector4f color, float renderDistance,
+                                 boolean thick, float partialTick, CallbackInfoReturnable<net.minecraft.client.renderer.FogParameters> cir) {
+        if (!Hooks21.ready()) return;
+        if (camera.getEntity() instanceof LivingEntity e
+                && (e.hasEffect(MobEffects.BLINDNESS) || e.hasEffect(MobEffects.DARKNESS))) return;
+        net.minecraft.client.renderer.FogParameters p = cir.getReturnValue();
+        if (p == net.minecraft.client.renderer.FogParameters.NO_FOG) return;
+        FogType fluid = camera.getFluidInCamera();
+        if (fluid == FogType.NONE && mode == FogRenderer.FogMode.FOG_TERRAIN) {
+            float m = dev.coolclient.core.modules.visual.RenderTweaks.Fog.terrain();
+            if (m == 1f) return;
+            if (Float.isInfinite(m)) {
+                cir.setReturnValue(net.minecraft.client.renderer.FogParameters.NO_FOG);
+                return;
+            }
+            cir.setReturnValue(new net.minecraft.client.renderer.FogParameters(p.start() * m, p.end() * m, p.shape(), p.red(), p.green(), p.blue(), p.alpha()));
+        } else if (fluid == FogType.WATER) {
+            float m = dev.coolclient.core.modules.visual.RenderTweaks.Fog.water();
+            if (m == 1f) return;
+            float end = Math.min(renderDistance, p.end() * m);
+            cir.setReturnValue(new net.minecraft.client.renderer.FogParameters(p.start(), end, p.shape(), p.red(), p.green(), p.blue(), p.alpha()));
+        }
+    }
 }

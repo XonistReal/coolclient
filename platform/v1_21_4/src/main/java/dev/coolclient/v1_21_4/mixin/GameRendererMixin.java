@@ -72,7 +72,9 @@ public abstract class GameRendererMixin {
     @Inject(method = "renderLevel", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/GameRenderer;renderItemInHand(Lnet/minecraft/client/Camera;FLorg/joml/Matrix4f;)V"))
     private void cool$waypoints(DeltaTracker delta, CallbackInfo ci) {
-        if (Hooks21.ready()) World3D21.waypoints(mainCamera);
+        if (!Hooks21.ready()) return;
+        World3D21.waypoints(mainCamera);
+        dev.coolclient.v1_21_4.WorldDraw21.post(mainCamera, delta.getGameTimeDeltaPartialTick(false));
     }
 
     // ---------------------------------------------------------------- totem pop overlay

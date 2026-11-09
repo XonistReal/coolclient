@@ -24,6 +24,9 @@ public final class SelfTest {
 
         /** Creates and joins a new creative superflat world. */
         void createWorld(String name);
+
+        /** Loads every mixin target now, so a broken hook fails the test even if the test never reaches it. */
+        default void auditMixins() {}
     }
 
     private static Driver driver;
@@ -74,6 +77,8 @@ public final class SelfTest {
                         break;
                     }
                     if (a.platform().currentScreen() instanceof MainMenuScreen && frames > 120) {
+                        driver.auditMixins();
+                        Log.info("Self-test: every mixin applied");
                         a.cosmetics().equip(CosmeticCatalog.get("cape_aurora"));
                         a.cosmetics().equip(CosmeticCatalog.get("wings_energy"));
                         a.cosmetics().equip(CosmeticCatalog.get("halo_aurora"));
@@ -112,11 +117,47 @@ public final class SelfTest {
                 case 103:
                     if (frames > 60) {
                         shot("02d-mod-menu-compact");
-                        step = 104;
+                        // Newer modules (long names, many settings) in each layout.
+                        step = 120;
                         frames = 0;
                         a.client().menuLayout.set("Sidebar");
-                        a.client().mainMenuLayout.set("Showcase");
-                        a.platform().openScreen(new MainMenuScreen());
+                        a.platform().openScreen(ModMenuScreen.searching(null, "info"));
+                    }
+                    break;
+                case 120:
+                case 121:
+                case 122:
+                    if (frames > 60) {
+                        String[] layouts = {"sidebar", "tabs", "compact"};
+                        shot("02e-new-mods-" + layouts[step - 120]);
+                        step++;
+                        frames = 0;
+                        if (step <= 122) {
+                            a.client().menuLayout.set(step == 121 ? "Tabs" : "Compact");
+                            a.platform().openScreen(ModMenuScreen.searching(null, "info"));
+                        } else {
+                            a.client().menuLayout.set("Tabs");
+                            a.platform().openScreen(ModMenuScreen.forModule(null,
+                                    a.modules().get(dev.coolclient.core.modules.utility.UtilityTweaks.Sounds.class)));
+                        }
+                    }
+                    break;
+                case 123:
+                case 124:
+                    if (frames > 60) {
+                        shot("02f-new-settings-" + (step == 123 ? "tabs" : "compact"));
+                        step++;
+                        frames = 0;
+                        if (step == 124) {
+                            a.client().menuLayout.set("Compact");
+                            a.platform().openScreen(ModMenuScreen.forModule(null,
+                                    a.modules().get(dev.coolclient.core.modules.hud.TargetHud.class)));
+                        } else {
+                            step = 104;
+                            a.client().menuLayout.set("Sidebar");
+                            a.client().mainMenuLayout.set("Showcase");
+                            a.platform().openScreen(new MainMenuScreen());
+                        }
                     }
                     break;
                 case 104:

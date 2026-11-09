@@ -32,6 +32,10 @@ public final class Platform189 implements Platform {
     private static final Set<Feature> FEATURES = EnumSet.of(Feature.OLD_ANIMATIONS, Feature.MOUSE_DELAY_FIX,
             Feature.BORDERLESS, Feature.TEXTURE_ANIMATIONS, Feature.MOTION_BLUR);
 
+    /** The multiplayer server last joined, for Reconnect. */
+    public static net.minecraft.client.network.ServerInfo lastServer;
+    private static String gpu;
+
     public static final Textures189 TEXTURES = new Textures189();
     public static final Renderer189 RENDERER = new Renderer189(TEXTURES);
     private final GameState189 game = new GameState189();
@@ -122,4 +126,33 @@ public final class Platform189 implements Platform {
     @Override public void setBorderless(boolean borderless) { Borderless189.set(borderless); }
 
     @Override public void setTextureAnimations(boolean enabled) { textureAnimations = enabled; }
+
+    /** The local player's selected stack. */
+    public static dev.coolclient.core.api.ItemRef held() {
+        return mc().player == null ? dev.coolclient.core.api.ItemRef.EMPTY : ItemRef189.of(mc().player.inventory.getMainHandStack());
+    }
+
+    @Override
+    public String gpuName() {
+        // Read once on the render thread (the HUD asks from there).
+        if (gpu == null) gpu = org.lwjgl.opengl.GL11.glGetString(org.lwjgl.opengl.GL11.GL_RENDERER);
+        return gpu;
+    }
+
+    @Override
+    public File singleplayerWorldDir() {
+        net.minecraft.server.integrated.IntegratedServer s = mc().getServer();
+        if (s == null || !mc().isIntegratedServerRunning()) return null;
+        return new File(new File(mc().runDirectory, "saves"), s.getLevelName());
+    }
+
+    @Override public boolean canReconnect() { return lastServer != null; }
+
+    @Override
+    public void reconnect() {
+        net.minecraft.client.network.ServerInfo d = lastServer;
+        if (d == null) return;
+        mc().setScreen(new net.minecraft.client.gui.screen.ConnectScreen(
+                new MultiplayerScreen(new net.minecraft.client.gui.screen.TitleScreen()), mc(), d));
+    }
 }
